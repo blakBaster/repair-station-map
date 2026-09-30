@@ -76,11 +76,19 @@ async function loadApprovedPhotos(stationId){
   const {data,error}=await db.from('station_photos').select('storage_path,created_at').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
   if(error)throw error;
   for(const p of data||[]){
-   const candidates=[p.storage_path,String(p.storage_path||'').replace(/^\//,''),String(p.storage_path||'').replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
+   const raw=String(p.storage_path||'');
+   const candidates=[raw,raw.replace(/^\//,''),raw.replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
    let url=null;
-   for(const path of candidates){const {data:signed}=await db.storage.from('station-photos').createSignedUrl(path,3600);if(signed?.signedUrl){url=signed.signedUrl;break}}
+   for(const path of candidates){
+    const pub=db.storage.from('station-photos').getPublicUrl(path)?.data?.publicUrl;
+    if(pub){url=pub;break}
+    const {data:signed}=await db.storage.from('station-photos').createSignedUrl(path,3600);
+    if(signed?.signedUrl){url=signed.signedUrl;break}
+   }
    if(!url)continue;
-   const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='lazy';img.onclick=()=>{lightboxImg.src=url;lightbox.classList.add('open')};stationPhotos.appendChild(img);
+   const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='lazy';
+   img.onerror=async()=>{for(const path of candidates){const {data:signed}=await db.storage.from('station-photos').createSignedUrl(path,3600);if(signed?.signedUrl&&img.src!==signed.signedUrl){img.src=signed.signedUrl;return}}};
+   img.onclick=()=>{lightboxImg.src=img.src;lightbox.classList.add('open')};stationPhotos.appendChild(img);
   }
  }catch(e){console.error('loadApprovedPhotos',e)}
 }
@@ -115,6 +123,32 @@ async function loadStations(){
  }
  stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);
 }
+document.getElementById('alertBtn').onclick=async()=>{
+ const choice=prompt('Статус станции:\n1 — Работает\n2 — Частично работает\n3 — Не работает');
+ if(choice===null)return;
+ const statuses={'1':'working','2':'partial','3':'broken'},status=statuses[String(choice).trim()];
+ if(!status){notice('Выберите 1, 2 или 3');return}
+ const message=prompt('Что хотите сообщить о станции?') ?? '';
+ const defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'};
+ const {error}=await db.from('station_reports').insert({station_id:activeStation.id,status,message:message.trim()||defaults[status]});
+ if(error){console.error(error);notice('Не удалось отправить сообщение');return}
+ notice('Спасибо! Сообщение отправлено ✓');await loadAlert(activeStation.id);
+};
+const photoInput=document.getElementById('photoInput');
+document.getElementById('photoBtn').onclick=()=>photoInput.click();
+photoInput.onchange=async()=>{
+ const file=photoInput.files&&photoInput.files[0];if(!file)return;
+ if(!file.type.startsWith('image/')){notice('Выберите фотографию');photoInput.value='';return}
+ if(file.size>12*1024*1024){notice('Фото слишком большое. Максимум 12 МБ');photoInput.value='';return}
+ notice('Загружаем фото…');
+ const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+ const path='pending/'+activeStation.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+ const {error:uploadError}=await db.storage.from('station-photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
+ if(uploadError){console.error(uploadError);notice('Не удалось загрузить фото');photoInput.value='';return}
+ const {error:rowError}=await db.from('station_photos').insert({station_id:activeStation.id,storage_path:path,moderation_status:'pending'});
+ if(rowError){console.error(rowError);notice('Фото загружено, но не удалось отправить на модерацию');photoInput.value='';return}
+ photoInput.value='';notice('Фото отправлено на модерацию ✓');
+};
 document.getElementById('close').onclick=()=>panel.classList.remove('open');
 document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
 
