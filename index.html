@@ -16,81 +16,74 @@
 <div id="map"></div>
 <div class="top"><div class="brand">🔧 Repair Station Map<small>Велоремонтные точки</small></div><div class="camera"><button class="gps" id="gps" aria-label="Моё местоположение">◎</button></div></div><button class="compass" id="compass" aria-label="Вернуть север наверх" title="Север"><span class="compass-arrow">🧭</span></button>
 <div class="notice" id="notice"></div>
-<div class="panel" id="panel"><div class="row"><div class="icon">🔧</div><div><div class="title">Repair Station #001</div><div class="sub">52.231823780917104, 20.9849785985799</div></div></div><div class="tools"><span class="chip">🛠 Набор инструментов</span><span class="chip">🚲 Ремонтная стойка</span><span class="chip">💨 Насос</span></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><button class="alertbtn" id="alertBtn">Оставить сообщение о станции</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button><input id="photoInput" type="file" accept="image/*" capture="environment" hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
+<div class="panel" id="panel"><div class="row"><div class="icon">🔧</div><div><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div></div></div><div class="tools" id="stationTools"></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><button class="alertbtn" id="alertBtn">Оставить сообщение о станции</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button><input id="photoInput" type="file" accept="image/*" capture="environment" hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
 <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL='https://fbyzaovfjnagwmvczxjs.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_kVGtNH6M4Z3qtPXDKO3j_w_-kk19zwd';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
-const station={id:1,name:'Repair Station #001',lat:52.231823780917104,lng:20.9849785985799,status:'unknown',lastChecked:null};
-const map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/fiord',pitch:0,bearing:0,center:[station.lng,station.lat],zoom:15,attributionControl:true,touchPitch:true,touchZoomRotate:true,dragRotate:true,pitchWithRotate:true});
-map.dragPan.enable(); map.scrollZoom.enable(); map.dragRotate.enable(); map.touchZoomRotate.enable(); if(map.touchPitch) map.touchPitch.enable();
-map.scrollZoom.setWheelZoomRate(1/900); map.scrollZoom.setZoomRate(1/120);
-const el=document.createElement('div');el.className='station-marker';el.textContent='🔧';el.title=station.name;
-new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([station.lng,station.lat]).addTo(map);
-const panel=document.getElementById('panel');el.onclick=()=>panel.classList.add('open');document.getElementById('close').onclick=()=>panel.classList.remove('open');
-document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`,'_blank');
+
+const fallbackStation={id:1,name:'Repair Station',lat:52.231823780917104,lng:20.9849785985799,equipment:['Набор инструментов','Ремонтная стойка','Насос'],status:'unknown',lastChecked:null};
+let stations=[], activeStation=fallbackStation, stationMarkers=[];
+const map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/fiord',pitch:0,bearing:0,center:[fallbackStation.lng,fallbackStation.lat],zoom:15,attributionControl:true,touchPitch:true,touchZoomRotate:true,dragRotate:true,pitchWithRotate:true});
+map.dragPan.enable();map.scrollZoom.enable();map.dragRotate.enable();map.touchZoomRotate.enable();if(map.touchPitch)map.touchPitch.enable();
+map.scrollZoom.setWheelZoomRate(1/900);map.scrollZoom.setZoomRate(1/120);
+
+const panel=document.getElementById('panel'), alertText=document.getElementById('alertText'), alertDate=document.getElementById('alertDate');
+const stationTitle=document.getElementById('stationTitle'), stationCoords=document.getElementById('stationCoords'), stationTools=document.getElementById('stationTools');
 function notice(t){const n=document.getElementById('notice');n.textContent=t;n.style.display='block';clearTimeout(window.__nt);window.__nt=setTimeout(()=>n.style.display='none',3000)}
+function normalizeStation(s){
+ const lat=Number(s.lat??s.latitude),lng=Number(s.lng??s.longitude??s.lon);
+ let equipment=s.equipment??s.tools??fallbackStation.equipment;
+ if(typeof equipment==='string'){try{equipment=JSON.parse(equipment)}catch{equipment=equipment.split(',').map(x=>x.trim()).filter(Boolean)}}
+ if(!Array.isArray(equipment))equipment=fallbackStation.equipment;
+ return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,status:s.status||'unknown',lastChecked:s.last_checked??s.lastChecked??null};
+}
+function equipmentIcon(t){const x=t.toLowerCase();return x.includes('насос')?'💨':x.includes('стой')?'🚲':'🛠'}
+function renderStation(s){
+ activeStation=s;
+ stationTitle.textContent=s.name==='Repair Station #001'?'Repair Station':s.name;
+ stationCoords.textContent=`${s.lat}, ${s.lng}`;
+ stationTools.innerHTML='';
+ s.equipment.forEach(t=>{const e=document.createElement('span');e.className='chip';e.textContent=`${equipmentIcon(String(t))} ${t}`;stationTools.appendChild(e)});
+ alertText.textContent='Загрузка…';alertDate.textContent='';
+ loadAlert(s.id);panel.classList.add('open');
+}
+function addMarker(s){
+ const el=document.createElement('div');el.className='station-marker';el.textContent='🔧';el.title=s.name;
+ const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
+ el.onclick=()=>renderStation(s);stationMarkers.push(marker);
+}
+async function loadStations(){
+ try{
+  const {data,error}=await db.from('stations').select('*').order('id',{ascending:true});
+  if(error)throw error;
+  stations=(data||[]).map(normalizeStation).filter(s=>Number.isFinite(s.lat)&&Number.isFinite(s.lng));
+  if(!stations.length)throw new Error('Таблица stations пуста');
+ }catch(e){
+  console.warn('Stations fallback:',e);stations=[fallbackStation];
+ }
+ stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);
+}
+document.getElementById('close').onclick=()=>panel.classList.remove('open');
+document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
+
 let userMarker=null;
 document.getElementById('gps').onclick=()=>{if(!navigator.geolocation){notice('Геолокация не поддерживается');return}navigator.geolocation.getCurrentPosition(p=>{const ll=[p.coords.longitude,p.coords.latitude];if(userMarker)userMarker.remove();const u=document.createElement('div');u.style.cssText='width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 2px 10px #0006';userMarker=new maplibregl.Marker({element:u}).setLngLat(ll).addTo(map);map.flyTo({center:ll,zoom:16});},()=>notice('Не удалось получить геолокацию. Разрешите доступ к местоположению.'),{enableHighAccuracy:true,timeout:10000,maximumAge:10000})};
-const photoBtn=document.getElementById('photoBtn'), photoInput=document.getElementById('photoInput');
+
+const photoBtn=document.getElementById('photoBtn'),photoInput=document.getElementById('photoInput');
 photoBtn.onclick=()=>photoInput.click();
-photoInput.onchange=async()=>{
-  const file=photoInput.files?.[0]; if(!file)return;
-  if(!file.type.startsWith('image/')){notice('Можно загрузить только изображение');return}
-  if(file.size>6*1024*1024){notice('Фото слишком большое. Максимум 6 МБ');return}
-  photoBtn.disabled=true; photoBtn.textContent='Загрузка…';
-  try{
-    const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase();
-    const path=`pending/${station.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-    const {error:upErr}=await db.storage.from('station-photos').upload(path,file,{contentType:file.type,upsert:false});
-    if(upErr)throw upErr;
-    const {error:rowErr}=await db.from('station_photos').insert({station_id:station.id,storage_path:path,moderation_status:'pending'});
-    if(rowErr){await db.storage.from('station-photos').remove([path]);throw rowErr}
-    notice('Спасибо! Фото отправлено на модерацию.');
-  }catch(e){console.error(e);notice('Не удалось отправить фото. Проверь настройку Supabase.')}
-  finally{photoBtn.disabled=false;photoBtn.textContent='📷 Предложить фото станции';photoInput.value=''}
-};
-const compass=document.getElementById('compass');
-const compassArrow=compass.querySelector('.compass-arrow');
-function updateCompass(){
-  const b=map.getBearing();
-  compass.classList.toggle('show',Math.abs(b)>0.8);
-  compassArrow.style.transform=`rotate(${-b}deg)`;
-}
-map.on('rotate',updateCompass);
-map.on('moveend',updateCompass);
-compass.onclick=()=>map.easeTo({bearing:0,duration:350});
-updateCompass();
-const alertText=document.getElementById('alertText'),alertDate=document.getElementById('alertDate');
-async function loadAlert(){
-  const {data,error}=await db.from('station_reports').select('message,status,created_at').eq('station_id',station.id).order('created_at',{ascending:false}).limit(1);
-  if(error){console.warn(error);alertText.textContent='Не удалось загрузить сообщения';return}
-  const a=data?.[0];
-  if(a){alertText.textContent=a.message;alertDate.textContent=new Date(a.created_at).toLocaleString('ru-RU')}
-}
-loadAlert();
-document.getElementById('alertBtn').onclick=async()=>{
-  const t=prompt('Что сейчас со станцией? Например: «Насос не работает»');if(!t||!t.trim())return;
-  const message=t.trim().slice(0,500);
-  const {error}=await db.from('station_reports').insert({station_id:station.id,message});
-  if(error){console.error(error);notice('Не удалось отправить сообщение. Проверь настройку Supabase.');return}
-  alertText.textContent=message;alertDate.textContent=new Date().toLocaleString('ru-RU');notice('Сообщение опубликовано для всех');
-};
-map.on('load',()=>{
-  if(!map.getLayer('repair-3d-buildings')){
-    map.addLayer({
-      id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,
-      paint:{
-        'fill-extrusion-color':'#33465a',
-        'fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],
-        'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
-        'fill-extrusion-opacity':0.72
-      }
-    });
-  }
-});
-map.on('error',e=>{if(e&&e.error) console.warn(e.error);});
+photoInput.onchange=async()=>{const file=photoInput.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){notice('Можно загрузить только изображение');return}if(file.size>6*1024*1024){notice('Фото слишком большое. Максимум 6 МБ');return}photoBtn.disabled=true;photoBtn.textContent='Загрузка…';try{const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase();const path=`pending/${activeStation.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;const {error:upErr}=await db.storage.from('station-photos').upload(path,file,{contentType:file.type,upsert:false});if(upErr)throw upErr;const {error:rowErr}=await db.from('station_photos').insert({station_id:activeStation.id,storage_path:path,moderation_status:'pending'});if(rowErr){await db.storage.from('station-photos').remove([path]);throw rowErr}notice('Спасибо! Фото отправлено на модерацию.');}catch(e){console.error(e);notice('Не удалось отправить фото. Проверь настройку Supabase.')}finally{photoBtn.disabled=false;photoBtn.textContent='📷 Предложить фото станции';photoInput.value=''}};
+
+async function loadAlert(stationId){const {data,error}=await db.from('station_reports').select('message,status,created_at').eq('station_id',stationId).order('created_at',{ascending:false}).limit(1);if(error){console.warn(error);alertText.textContent='Не удалось загрузить сообщения';return}const a=data?.[0];if(a){alertText.textContent=a.message;alertDate.textContent=new Date(a.created_at).toLocaleString('ru-RU')}else{alertText.textContent='Сообщений пока нет';alertDate.textContent=''}}
+document.getElementById('alertBtn').onclick=async()=>{const t=prompt('Что сейчас со станцией? Например: «Насос не работает»');if(!t||!t.trim())return;const message=t.trim().slice(0,500);const {error}=await db.from('station_reports').insert({station_id:activeStation.id,message});if(error){console.error(error);notice('Не удалось отправить сообщение.');return}alertText.textContent=message;alertDate.textContent=new Date().toLocaleString('ru-RU');notice('Сообщение опубликовано для всех')};
+
+const compass=document.getElementById('compass'),compassArrow=compass.querySelector('.compass-arrow');
+function updateCompass(){const b=map.getBearing();compass.classList.toggle('show',Math.abs(b)>0.8);compassArrow.style.transform=`rotate(${-b}deg)`}
+map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=()=>map.easeTo({bearing:0,duration:350});updateCompass();
+
+map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{'fill-extrusion-color':'#33465a','fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],'fill-extrusion-opacity':0.72}})}catch(e){console.warn('3D buildings:',e)}});
+map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
 </script>
 </body></html>
