@@ -71,10 +71,14 @@ function renderStation(s){
  alertText.textContent='Загрузка…';alertDate.textContent='';
  loadAlert(s.id);loadApprovedPhotos(s.id);panel.classList.add('open');
 }
+let ignoreMapClickUntil=0;
 function addMarker(s){
  const el=document.createElement('div');el.className='station-marker';el.textContent='🔧';el.title=s.name;
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
- el.onclick=e=>{e.stopPropagation();renderStation(s)};stationMarkers.push(marker);
+ const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
+ el.addEventListener('click',openStation);
+ el.addEventListener('touchend',openStation,{passive:false});
+ stationMarkers.push(marker);
 }
 async function loadStations(){
  try{
@@ -242,6 +246,8 @@ async function moderatePhoto(id,status,card){
 }
 
 map.on('click',e=>{
+ if(Date.now()<ignoreMapClickUntil)return;
+ if(e?.originalEvent?.target?.closest?.('.station-marker'))return;
  if(panel.classList.contains('open'))panel.classList.remove('open');
 });
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
