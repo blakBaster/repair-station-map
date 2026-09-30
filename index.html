@@ -86,7 +86,24 @@ photoBtn.onclick=()=>photoInput.click();
 photoInput.onchange=async()=>{const file=photoInput.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){notice('Можно загрузить только изображение');return}if(file.size>6*1024*1024){notice('Фото слишком большое. Максимум 6 МБ');return}photoBtn.disabled=true;photoBtn.textContent='Загрузка…';try{const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase();const path=`pending/${activeStation.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;const {error:upErr}=await db.storage.from('station-photos').upload(path,file,{contentType:file.type,upsert:false});if(upErr)throw upErr;const {error:rowErr}=await db.from('station_photos').insert({station_id:activeStation.id,storage_path:path,moderation_status:'pending'});if(rowErr){await db.storage.from('station-photos').remove([path]);throw rowErr}notice('Спасибо! Фото отправлено на модерацию.');}catch(e){console.error(e);notice('Не удалось отправить фото. Проверь настройку Supabase.')}finally{photoBtn.disabled=false;photoBtn.textContent='📷 Предложить фото станции';photoInput.value=''}};
 
 async function loadAlert(stationId){const {data,error}=await db.from('station_reports').select('message,status,created_at').eq('station_id',stationId).order('created_at',{ascending:false}).limit(1);if(error){console.warn(error);alertText.textContent='Не удалось загрузить сообщения';return}const a=data?.[0];if(a){alertText.textContent=a.message;alertDate.textContent=new Date(a.created_at).toLocaleString('ru-RU')}else{alertText.textContent='Сообщений пока нет';alertDate.textContent=''}}
-document.getElementById('alertBtn').onclick=async()=>{const t=prompt('Что сейчас со станцией? Например: «Насос не работает»');if(!t||!t.trim())return;const message=t.trim().slice(0,500);const {error}=await db.from('station_reports').insert({station_id:activeStation.id,message});if(error){console.error(error);notice('Не удалось отправить сообщение.');return}alertText.textContent=message;alertDate.textContent=new Date().toLocaleString('ru-RU');notice('Сообщение опубликовано для всех')};
+document.getElementById('alertBtn').onclick=async()=>{
+ const choice=prompt('Состояние станции:\n1 — 🟢 Работает\n2 — 🟡 Частично работает\n3 — 🔴 Не работает\n\nВведите 1, 2 или 3');
+ if(choice===null)return;
+ const statusMap={'1':'working','2':'partial','3':'broken'};
+ const newStatus=statusMap[choice.trim()];
+ if(!newStatus){notice('Выберите 1, 2 или 3');return}
+ const t=prompt('Добавьте короткое сообщение. Например: «Насос не работает». Можно оставить пустым.');
+ if(t===null)return;
+ const message=(t.trim()||({'working':'Всё работает','partial':'Станция работает частично','broken':'Станция не работает'}[newStatus])).slice(0,500);
+ const now=new Date().toISOString();
+ const {error:reportError}=await db.from('station_reports').insert({station_id:activeStation.id,message,status:newStatus});
+ if(reportError){console.error(reportError);notice('Не удалось отправить сообщение.');return}
+ const {error:stationError}=await db.from('stations').update({status:newStatus,last_checked:now}).eq('id',activeStation.id);
+ if(stationError){console.warn('Status update:',stationError);notice('Сообщение сохранено, но статус станции не обновился');await loadAlert(activeStation.id);return}
+ activeStation.status=newStatus;activeStation.lastChecked=now;
+ const [statusClass,statusLabel]=statusInfo(newStatus);stationStatus.className='statuspill '+statusClass;stationStatus.textContent=statusLabel;lastChecked.textContent=checkedText(now);
+ alertText.textContent=message;alertDate.textContent=new Date(now).toLocaleString('ru-RU');notice('Статус и сообщение опубликованы для всех');
+};
 
 const compass=document.getElementById('compass'),compassArrow=compass.querySelector('.compass-arrow');
 function updateCompass(){const b=map.getBearing();compass.classList.toggle('show',Math.abs(b)>0.8);compassArrow.style.transform=`rotate(${-b}deg)`}
