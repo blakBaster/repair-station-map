@@ -27,7 +27,7 @@
  </div>
  <div id="adminLoggedIn" style="display:none"><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><h3 style="margin:18px 0 8px">📍 Предложенные станции</h3><div class="photoqueue" id="submissionQueue"></div><h3 style="margin:20px 0 8px">📷 Предложенные фото</h3><div class="photoqueue" id="photoQueue"></div></div>
 </div></div>
-<div class="panel" id="panel"><div class="row"><div class="icon">🔧</div><div><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div><div class="sub" id="stationDistance"></div></div></div><div class="stationmeta"><span class="statuspill unknown" id="stationStatus">⚪ Статус неизвестен</span><span class="checkedpill" id="lastChecked">Проверка не указана</span></div><div class="tools" id="stationTools"></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><div class="stationphotos" id="stationPhotos"></div><button class="alertbtn" id="alertBtn">Оставить сообщение о станции</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button><input id="photoInput" type="file" accept="image/*" capture="environment" hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
+<div class="panel" id="panel"><div class="row"><div class="icon">🔧</div><div><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div><div class="sub" id="stationDistance"></div></div></div><div class="stationmeta"><span class="statuspill unknown" id="stationStatus">⚪ Статус неизвестен</span><span class="checkedpill" id="lastChecked">Проверка не указана</span></div><div class="tools" id="stationTools"></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><div class="stationphotos" id="stationPhotos"></div><button class="alertbtn" id="alertBtn">Оставить сообщение о станции</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button><input id="photoInput" type="file" accept="image/*" hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
 <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -71,26 +71,21 @@ async function loadAlert(stationId){
  }catch(e){console.error('loadAlert',e);alertText.textContent='Не удалось загрузить сообщения';alertDate.textContent=''}
 }
 async function loadApprovedPhotos(stationId){
- stationPhotos.innerHTML='';
- try{
-  const {data,error}=await db.from('station_photos').select('storage_path,created_at').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
-  if(error)throw error;
-  for(const p of data||[]){
-   const raw=String(p.storage_path||'');
-   const candidates=[raw,raw.replace(/^\//,''),raw.replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
+ stationPhotos.classList.remove('show');stationPhotos.innerHTML='';
+ const {data,error}=await db.from('station_photos').select('id,storage_path').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
+ if(error){console.warn('Approved photos:',error);return}
+ for(const p of data||[]){
+   const raw=String(p.storage_path||'').trim();
+   const candidates=[raw,raw.replace(/^\/+/,''),raw.replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
    let url=null;
    for(const path of candidates){
-    const pub=db.storage.from('station-photos').getPublicUrl(path)?.data?.publicUrl;
-    if(pub){url=pub;break}
-    const {data:signed}=await db.storage.from('station-photos').createSignedUrl(path,3600);
-    if(signed?.signedUrl){url=signed.signedUrl;break}
+     const {data:signed,error:urlError}=await db.storage.from('station-photos').createSignedUrl(path,3600);
+     if(!urlError&&signed?.signedUrl){url=signed.signedUrl;break}
    }
-   if(!url)continue;
-   const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='lazy';
-   img.onerror=async()=>{for(const path of candidates){const {data:signed}=await db.storage.from('station-photos').createSignedUrl(path,3600);if(signed?.signedUrl&&img.src!==signed.signedUrl){img.src=signed.signedUrl;return}}};
-   img.onclick=()=>{lightboxImg.src=img.src;lightbox.classList.add('open')};stationPhotos.appendChild(img);
-  }
- }catch(e){console.error('loadApprovedPhotos',e)}
+   if(!url){console.warn('Photo object not found:',raw);continue}
+   const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='eager';img.onclick=()=>{lightboxImg.src=url;lightbox.classList.add('open')};stationPhotos.appendChild(img);
+ }
+ if(stationPhotos.children.length)stationPhotos.classList.add('show');
 }
 function renderStation(s){
  activeStation=s;
