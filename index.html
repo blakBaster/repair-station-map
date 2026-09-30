@@ -114,26 +114,28 @@ document.getElementById('suggest').onclick=()=>{suggesting=true;panel.classList.
 document.getElementById('suggestCancel').onclick=()=>{suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src')};
 document.getElementById('suggestSend').onclick=async()=>{
  const btn=document.getElementById('suggestSend'),center=map.getCenter(),photo=suggestPhoto.files&&suggestPhoto.files[0];
- const payload={lat:center.lat,lng:center.lng,has_tools:document.getElementById('sTools').checked,has_rack:document.getElementById('sRack').checked,has_pump:document.getElementById('sPump').checked,moderation_status:'pending'};
+ const payload={lat:center.lat,lng:center.lng,has_tools:document.getElementById('sTools').checked,has_rack:document.getElementById('sRack').checked,has_pump:document.getElementById('sPump').checked,moderation_status:'pending',photo_path:null};
  if(!payload.has_tools&&!payload.has_rack&&!payload.has_pump){notice('Отметьте хотя бы одно оборудование');return}
  btn.disabled=true;const oldText=btn.textContent;btn.textContent='Отправляем…';
+ let uploadedPath=null;
  try{
-  const {data,error}=await db.from('station_submissions').insert(payload).select('id').single();
-  if(error)throw error;
-  let photoFailed=false;
   if(photo){
    const ext=(photo.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-   const path='submissions/'+data.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
-   const {error:uploadError}=await db.storage.from('station-photos').upload(path,photo,{contentType:photo.type||'image/jpeg',upsert:false});
-   if(uploadError){console.error(uploadError);photoFailed=true}
-   else{
-    const {error:pathError}=await db.from('station_submissions').update({photo_path:path}).eq('id',data.id);
-    if(pathError){console.error(pathError);photoFailed=true}
-   }
+   uploadedPath='submissions/'+Date.now()+'-'+Math.random().toString(36).slice(2,10)+'.'+ext;
+   const {error:uploadError}=await db.storage.from('station-photos').upload(uploadedPath,photo,{contentType:photo.type||'image/jpeg',upsert:false});
+   if(uploadError)throw new Error('PHOTO_UPLOAD: '+uploadError.message);
+   payload.photo_path=uploadedPath;
   }
+  const {error}=await db.from('station_submissions').insert(payload);
+  if(error)throw new Error('SUBMISSION_INSERT: '+error.message);
   localStorage.removeItem('pending_station_suggestion');suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src');
-  notice(photoFailed?'Заявка отправлена ✓ Но фото не удалось прикрепить.':'Спасибо! Repair Station отправлена на модерацию ✓');
- }catch(e){console.error(e);notice('Не удалось отправить заявку. Попробуйте ещё раз.')}
+  notice('Спасибо! Repair Station отправлена на модерацию ✓');
+ }catch(e){
+  console.error(e);
+  const msg=String(e&&e.message||e);
+  if(msg.startsWith('PHOTO_UPLOAD:'))notice('Не удалось загрузить фото. Попробуйте ещё раз.');
+  else notice('Не удалось отправить заявку. Попробуйте ещё раз.');
+ }
  finally{btn.disabled=false;btn.textContent=oldText}
 };
 
