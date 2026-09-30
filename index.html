@@ -101,9 +101,15 @@ async function loadApprovedPhotos(stationId){
  const {data,error}=await db.from('station_photos').select('id,storage_path').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
  if(error){console.warn('Approved photos:',error);return}
  for(const p of data||[]){
-   const {data:signed,error:urlError}=await db.storage.from('station-photos').createSignedUrl(p.storage_path,3600);
-   if(urlError||!signed?.signedUrl)continue;
-   const img=document.createElement('img');img.src=signed.signedUrl+(signed.signedUrl.includes('?')?'&':'?')+'v='+Date.now();img.alt='Фото Repair Station';img.loading='eager';img.onclick=()=>window.open(signed.signedUrl,'_blank');stationPhotos.appendChild(img);
+   try{
+     const {data:file,error:fileError}=await db.storage.from('station-photos').download(p.storage_path);
+     if(fileError||!file)throw fileError||new Error('Empty photo');
+     const objectUrl=URL.createObjectURL(file);
+     const img=document.createElement('img');img.src=objectUrl;img.alt='Фото Repair Station';img.loading='eager';
+     img.onload=()=>setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+     img.onclick=()=>window.open(objectUrl,'_blank');
+     stationPhotos.appendChild(img);
+   }catch(e){console.warn('Photo download:',e)}
  }
  if(stationPhotos.children.length)stationPhotos.classList.add('show');
 }
