@@ -112,57 +112,29 @@ const suggestPhoto=document.getElementById('suggestPhoto'),suggestPreview=docume
 suggestPhoto.onchange=()=>{const file=suggestPhoto.files&&suggestPhoto.files[0];if(!file){suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src');return}if(!file.type.startsWith('image/')){notice('Выберите фотографию');suggestPhoto.value='';return}if(file.size>12*1024*1024){notice('Фото слишком большое. Максимум 12 МБ');suggestPhoto.value='';return}const url=URL.createObjectURL(file);suggestPreview.src=url;suggestPreview.classList.add('show')};
 document.getElementById('suggest').onclick=()=>{suggesting=true;panel.classList.remove('open');suggestBox.classList.add('open');pickPin.classList.add('show');notice('Передвиньте карту и поставьте 📍 на Repair Station')};
 document.getElementById('suggestCancel').onclick=()=>{suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src')};
-document.getElementById('suggestSend').onclick=async()=>{const btn=document.getElementById('suggestSend'),center=map.getCenter();const payload={lat:center.lat,lng:center.lng,has_tools:document.getElementById('sTools').checked,has_rack:document.getElementById('sRack').checked,has_pump:document.getElementById('sPump').checked,moderation_status:'pending'};if(!payload.has_tools&&!payload.has_rack&&!payload.has_pump){notice('Отметьте хотя бы одно оборудование');return}btn.disabled=true;const oldText=btn.textContent;btn.textContent='Отправляем…';try{const {data,error}=await db.from('station_submissions').insert(payload).select('id').single();if(error)throw error;localStorage.removeItem('pending_station_suggestion');suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src');notice('Спасибо! Repair Station отправлена на модерацию ✓');console.log('station submission',data?.id)}catch(e){console.error(e);notice('Не удалось отправить заявку. Попробуйте ещё раз.')}finally{btn.disabled=false;btn.textContent=oldText}};
-
-
-const photoBtn=document.getElementById('photoBtn'),photoInput=document.getElementById('photoInput');
-photoBtn.onclick=()=>photoInput.click();
-photoInput.onchange=async()=>{const file=photoInput.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){notice('Можно загрузить только изображение');return}if(file.size>6*1024*1024){notice('Фото слишком большое. Максимум 6 МБ');return}photoBtn.disabled=true;photoBtn.textContent='Загрузка…';try{const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase();const path=`pending/${activeStation.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;const {error:upErr}=await db.storage.from('station-photos').upload(path,file,{contentType:file.type,upsert:false});if(upErr)throw upErr;const {error:rowErr}=await db.from('station_photos').insert({station_id:activeStation.id,storage_path:path,moderation_status:'pending'});if(rowErr){await db.storage.from('station-photos').remove([path]);throw rowErr}notice('Спасибо! Фото отправлено на модерацию.');}catch(e){console.error(e);notice('Не удалось отправить фото. Проверь настройку Supabase.')}finally{photoBtn.disabled=false;photoBtn.textContent='📷 Предложить фото станции';photoInput.value=''}};
-
-async function loadApprovedPhotos(stationId){
- stationPhotos.classList.remove('show');stationPhotos.innerHTML='';
- const {data,error}=await db.from('station_photos').select('id,storage_path').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
- if(error){console.warn('Approved photos:',error);return}
- for(const p of data||[]){
-   const raw=String(p.storage_path||'').trim();
-   const candidates=[raw,raw.replace(/^\/+/,''),raw.replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
-   let url=null;
-   for(const path of candidates){
-     const {data:signed,error:urlError}=await db.storage.from('station-photos').createSignedUrl(path,3600);
-     if(!urlError&&signed?.signedUrl){url=signed.signedUrl;break}
+document.getElementById('suggestSend').onclick=async()=>{
+ const btn=document.getElementById('suggestSend'),center=map.getCenter(),photo=suggestPhoto.files&&suggestPhoto.files[0];
+ const payload={lat:center.lat,lng:center.lng,has_tools:document.getElementById('sTools').checked,has_rack:document.getElementById('sRack').checked,has_pump:document.getElementById('sPump').checked,moderation_status:'pending'};
+ if(!payload.has_tools&&!payload.has_rack&&!payload.has_pump){notice('Отметьте хотя бы одно оборудование');return}
+ btn.disabled=true;const oldText=btn.textContent;btn.textContent='Отправляем…';
+ try{
+  const {data,error}=await db.from('station_submissions').insert(payload).select('id').single();
+  if(error)throw error;
+  let photoFailed=false;
+  if(photo){
+   const ext=(photo.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+   const path='submissions/'+data.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+   const {error:uploadError}=await db.storage.from('station-photos').upload(path,photo,{contentType:photo.type||'image/jpeg',upsert:false});
+   if(uploadError){console.error(uploadError);photoFailed=true}
+   else{
+    const {error:pathError}=await db.from('station_submissions').update({photo_path:path}).eq('id',data.id);
+    if(pathError){console.error(pathError);photoFailed=true}
    }
-   if(!url){console.warn('Photo object not found:',raw);continue}
-   const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='eager';img.onclick=()=>{lightboxImg.src=url;lightbox.classList.add('open')};stationPhotos.appendChild(img);
- }
- if(stationPhotos.children.length)stationPhotos.classList.add('show');
-}
-async function loadAlert(stationId){
- const {data,error}=await db.from('station_reports').select('message,status,created_at').eq('station_id',stationId).order('created_at',{ascending:false}).limit(1);
- if(error){console.warn(error);alertText.textContent='Не удалось загрузить сообщения';return}
- const a=data?.[0];
- if(a){
-   alertText.textContent=a.message;alertDate.textContent=new Date(a.created_at).toLocaleString('ru-RU');
-   if(a.status){
-     activeStation.status=a.status;activeStation.lastChecked=a.created_at;
-     const [statusClass,statusLabel]=statusInfo(a.status);stationStatus.className='statuspill '+statusClass;stationStatus.textContent=statusLabel;lastChecked.textContent=checkedText(a.created_at);
-   }
- }else{alertText.textContent='Сообщений пока нет';alertDate.textContent=''}
-}
-document.getElementById('alertBtn').onclick=async()=>{
- const choice=prompt('Состояние станции:\n1 — 🟢 Работает\n2 — 🟡 Частично работает\n3 — 🔴 Не работает\n\nВведите 1, 2 или 3');
- if(choice===null)return;
- const statusMap={'1':'working','2':'partial','3':'broken'};
- const newStatus=statusMap[choice.trim()];
- if(!newStatus){notice('Выберите 1, 2 или 3');return}
- const t=prompt('Добавьте короткое сообщение. Например: «Насос не работает». Можно оставить пустым.');
- if(t===null)return;
- const message=(t.trim()||({'working':'Всё работает','partial':'Станция работает частично','broken':'Станция не работает'}[newStatus])).slice(0,500);
- const now=new Date().toISOString();
- const {error:reportError}=await db.from('station_reports').insert({station_id:activeStation.id,message,status:newStatus});
- if(reportError){console.error(reportError);notice('Не удалось отправить сообщение.');return}
- activeStation.status=newStatus;activeStation.lastChecked=now;
- const [statusClass,statusLabel]=statusInfo(newStatus);stationStatus.className='statuspill '+statusClass;stationStatus.textContent=statusLabel;lastChecked.textContent=checkedText(now);
- alertText.textContent=message;alertDate.textContent=new Date(now).toLocaleString('ru-RU');notice('Статус и сообщение опубликованы для всех');
+  }
+  localStorage.removeItem('pending_station_suggestion');suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src');
+  notice(photoFailed?'Заявка отправлена ✓ Но фото не удалось прикрепить.':'Спасибо! Repair Station отправлена на модерацию ✓');
+ }catch(e){console.error(e);notice('Не удалось отправить заявку. Попробуйте ещё раз.')}
+ finally{btn.disabled=false;btn.textContent=oldText}
 };
 
 const compass=document.getElementById('compass'),compassArrow=compass.querySelector('.compass-arrow');
