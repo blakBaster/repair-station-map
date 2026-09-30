@@ -60,6 +60,30 @@ function normalizeStation(s){
 function equipmentIcon(t){const x=t.toLowerCase();return x.includes('насос')?'💨':x.includes('стой')?'🚲':'🛠'}
 function statusInfo(v){const s=String(v||'unknown').toLowerCase();if(['working','works','ok','active'].includes(s))return ['working','🟢 Работает'];if(['partial','partially_working','partly'].includes(s))return ['partial','🟡 Частично работает'];if(['broken','not_working','inactive','down'].includes(s))return ['broken','🔴 Не работает'];return ['unknown','⚪ Статус неизвестен']}
 function checkedText(v){if(!v)return 'Проверка не указана';const d=new Date(v);return Number.isNaN(d.getTime())?'Проверка не указана':'Проверено: '+d.toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+async function loadAlert(stationId){
+ try{
+  const {data,error}=await db.from('station_reports').select('message,status,created_at').eq('station_id',stationId).order('created_at',{ascending:false}).limit(1);
+  if(error)throw error;
+  const r=data&&data[0];
+  if(!r){alertText.textContent='Сообщений пока нет';alertDate.textContent='';return}
+  alertText.textContent=r.message||'Без комментария';alertDate.textContent=new Date(r.created_at).toLocaleString('ru-RU');
+  const [cls,label]=statusInfo(r.status);stationStatus.className='statuspill '+cls;stationStatus.textContent=label;lastChecked.textContent=checkedText(r.created_at);
+ }catch(e){console.error('loadAlert',e);alertText.textContent='Не удалось загрузить сообщения';alertDate.textContent=''}
+}
+async function loadApprovedPhotos(stationId){
+ stationPhotos.innerHTML='';
+ try{
+  const {data,error}=await db.from('station_photos').select('storage_path,created_at').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
+  if(error)throw error;
+  for(const p of data||[]){
+   const candidates=[p.storage_path,String(p.storage_path||'').replace(/^\//,''),String(p.storage_path||'').replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
+   let url=null;
+   for(const path of candidates){const {data:signed}=await db.storage.from('station-photos').createSignedUrl(path,3600);if(signed?.signedUrl){url=signed.signedUrl;break}}
+   if(!url)continue;
+   const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='lazy';img.onclick=()=>{lightboxImg.src=url;lightbox.classList.add('open')};stationPhotos.appendChild(img);
+  }
+ }catch(e){console.error('loadApprovedPhotos',e)}
+}
 function renderStation(s){
  activeStation=s;
  stationTitle.textContent=s.name==='Repair Station #001'?'Repair Station':s.name;
@@ -69,7 +93,7 @@ function renderStation(s){
  stationTools.innerHTML='';
  s.equipment.forEach(t=>{const e=document.createElement('span');e.className='chip';e.textContent=`${equipmentIcon(String(t))} ${t}`;stationTools.appendChild(e)});
  alertText.textContent='Загрузка…';alertDate.textContent='';
- loadAlert(s.id);loadApprovedPhotos(s.id);panel.classList.add('open');
+ panel.classList.add('open');panel.scrollTop=0;loadAlert(s.id);loadApprovedPhotos(s.id);
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
