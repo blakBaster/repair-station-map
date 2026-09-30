@@ -35,7 +35,13 @@ const stationTitle=document.getElementById('stationTitle'), stationCoords=docume
 function notice(t){const n=document.getElementById('notice');n.textContent=t;n.style.display='block';clearTimeout(window.__nt);window.__nt=setTimeout(()=>n.style.display='none',3000)}
 function normalizeStation(s){
  const lat=Number(s.lat??s.latitude),lng=Number(s.lng??s.longitude??s.lon);
- let equipment=s.equipment??s.tools??fallbackStation.equipment;
+ let equipment=s.equipment??s.tools;
+ if(equipment==null&&(s.has_tools!==undefined||s.has_rack!==undefined||s.has_pump!==undefined)){
+   equipment=[];
+   if(s.has_tools)equipment.push('Набор инструментов');
+   if(s.has_rack)equipment.push('Ремонтная стойка');
+   if(s.has_pump)equipment.push('Насос');
+ }
  if(typeof equipment==='string'){try{equipment=JSON.parse(equipment)}catch{equipment=equipment.split(',').map(x=>x.trim()).filter(Boolean)}}
  if(!Array.isArray(equipment))equipment=fallbackStation.equipment;
  return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,status:s.status||'unknown',lastChecked:s.last_checked??s.lastChecked??null};
