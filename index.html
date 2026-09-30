@@ -16,7 +16,7 @@
 </head>
 <body>
 <div id="map"></div>
-<div class="top"><div class="brand">🔧 Repair Station Map<small>Велоремонтные точки</small></div><div class="camera"><button class="gps" id="gps" aria-label="Моё местоположение">◎</button></div></div><button class="compass" id="compass" aria-label="Вернуть север наверх" title="Север"><span class="compass-arrow">🧭</span></button>
+<div class="top"><div class="brand" id="brand">🔧 Repair Station Map<small>Велоремонтные точки</small></div><div class="camera"><button class="gps" id="gps" aria-label="Моё местоположение">◎</button></div></div><button class="compass" id="compass" aria-label="Вернуть север наверх" title="Север"><span class="compass-arrow">🧭</span></button>
 <div class="notice" id="notice"></div>
 <button class="adminopen" id="adminOpen">🔐 Админ</button><div class="lightbox" id="lightbox"><button class="lightboxclose" id="lightboxClose">✕</button><img id="lightboxImg" alt="Фото Repair Station"></div>
 <div class="adminmodal" id="adminModal"><div class="adminbox">
@@ -73,7 +73,7 @@ function renderStation(s){
 function addMarker(s){
  const el=document.createElement('div');el.className='station-marker';el.textContent='🔧';el.title=s.name;
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
- el.onclick=()=>renderStation(s);stationMarkers.push(marker);
+ el.onclick=e=>{e.stopPropagation();renderStation(s)};stationMarkers.push(marker);
 }
 async function loadStations(){
  try{
@@ -151,6 +151,18 @@ map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))ma
 document.getElementById('lightboxClose').onclick=()=>{lightbox.classList.remove('open');lightboxImg.src=''};lightbox.onclick=e=>{if(e.target===lightbox){lightbox.classList.remove('open');lightboxImg.src=''}};
 const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue');
 document.getElementById('adminOpen').onclick=async()=>{adminModal.classList.add('open');await refreshAdmin()};
+const brand=document.getElementById('brand');
+let adminPressTimer=null,adminLongPressed=false;
+function startAdminPress(e){
+ if(window.innerWidth>600)return;
+ adminLongPressed=false;
+ adminPressTimer=setTimeout(async()=>{adminLongPressed=true;adminModal.classList.add('open');await refreshAdmin();if(navigator.vibrate)navigator.vibrate(35)},900);
+}
+function cancelAdminPress(){clearTimeout(adminPressTimer);adminPressTimer=null}
+brand.addEventListener('touchstart',startAdminPress,{passive:true});
+brand.addEventListener('touchend',cancelAdminPress,{passive:true});
+brand.addEventListener('touchcancel',cancelAdminPress,{passive:true});
+brand.addEventListener('touchmove',cancelAdminPress,{passive:true});
 document.getElementById('adminClose').onclick=()=>adminModal.classList.remove('open');
 adminModal.onclick=e=>{if(e.target===adminModal)adminModal.classList.remove('open')};
 async function refreshAdmin(){
@@ -195,6 +207,9 @@ async function moderatePhoto(id,status,card){
  if(!photoQueue.querySelector('.photocard'))photoQueue.innerHTML='<div class="adminmsg">🎉 Очередь пуста — новых фото нет.</div>';
 }
 
+map.on('click',e=>{
+ if(panel.classList.contains('open'))panel.classList.remove('open');
+});
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
 </script>
 </body></html>
