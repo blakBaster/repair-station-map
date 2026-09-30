@@ -20,12 +20,12 @@
 <div class="notice" id="notice"></div>
 <button class="adminopen" id="adminOpen">🔐 Админ</button><div class="lightbox" id="lightbox"><button class="lightboxclose" id="lightboxClose">✕</button><img id="lightboxImg" alt="Фото Repair Station"></div>
 <div class="adminmodal" id="adminModal"><div class="adminbox">
- <div class="adminhead"><h2>📷 Модерация фото</h2><button class="adminclose" id="adminClose">✕</button></div>
+ <div class="adminhead"><h2>🔐 Модерация</h2><button class="adminclose" id="adminClose">✕</button></div>
  <div id="adminLoggedOut">
   <div class="adminform"><input id="adminEmail" type="email" autocomplete="username" placeholder="Email администратора"><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Пароль"><button id="adminLogin">Войти</button></div>
   <div class="adminmsg">Доступ только для администратора Repair Station Map.</div>
  </div>
- <div id="adminLoggedIn" style="display:none"><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><div class="photoqueue" id="photoQueue"></div></div>
+ <div id="adminLoggedIn" style="display:none"><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><h3 style="margin:18px 0 8px">📍 Предложенные станции</h3><div class="photoqueue" id="submissionQueue"></div><h3 style="margin:20px 0 8px">📷 Предложенные фото</h3><div class="photoqueue" id="photoQueue"></div></div>
 </div></div>
 <div class="panel" id="panel"><div class="row"><div class="icon">🔧</div><div><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div><div class="sub" id="stationDistance"></div></div></div><div class="stationmeta"><span class="statuspill unknown" id="stationStatus">⚪ Статус неизвестен</span><span class="checkedpill" id="lastChecked">Проверка не указана</span></div><div class="tools" id="stationTools"></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><div class="stationphotos" id="stationPhotos"></div><button class="alertbtn" id="alertBtn">Оставить сообщение о станции</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button><input id="photoInput" type="file" accept="image/*" capture="environment" hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
 <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
@@ -146,7 +146,7 @@ map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=(
 map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{'fill-extrusion-color':'#33465a','fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],'fill-extrusion-opacity':0.72}})}catch(e){console.warn('3D buildings:',e)}});
 
 document.getElementById('lightboxClose').onclick=()=>{lightbox.classList.remove('open');lightboxImg.src=''};lightbox.onclick=e=>{if(e.target===lightbox){lightbox.classList.remove('open');lightboxImg.src=''}};
-const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue');
+const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue'),submissionQueue=document.getElementById('submissionQueue');
 document.getElementById('adminOpen').onclick=async()=>{adminModal.classList.add('open');await refreshAdmin()};
 const brand=document.getElementById('brand');
 let adminPressTimer=null,adminLongPressed=false;
@@ -167,7 +167,7 @@ async function refreshAdmin(){
  if(!session){adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';return}
  const {data:isAdmin,error}=await db.rpc('is_admin');
  if(error||!isAdmin){await db.auth.signOut();adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';notice('У этого аккаунта нет прав администратора');return}
- adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await loadPendingPhotos();
+ adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos()]);
 }
 document.getElementById('adminLogin').onclick=async()=>{
  const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;
@@ -177,7 +177,44 @@ document.getElementById('adminLogin').onclick=async()=>{
  if(error){console.error(error);notice('Не удалось войти. Проверьте email и пароль.');return}
  document.getElementById('adminPassword').value='';await refreshAdmin();
 };
-document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();photoQueue.innerHTML='';await refreshAdmin()};
+document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();photoQueue.innerHTML='';submissionQueue.innerHTML='';await refreshAdmin()};
+async function loadPendingSubmissions(){
+ submissionQueue.innerHTML='<div class="adminmsg">Загрузка заявок…</div>';
+ const {data,error}=await db.from('station_submissions').select('id,lat,lng,has_tools,has_rack,has_pump,photo_path,created_at').eq('moderation_status','pending').order('created_at',{ascending:true});
+ if(error){console.error(error);submissionQueue.innerHTML='<div class="adminmsg">Не удалось загрузить заявки.</div>';return}
+ if(!data?.length){submissionQueue.innerHTML='<div class="adminmsg">🎉 Новых станций нет.</div>';return}
+ submissionQueue.innerHTML='';
+ for(const s of data){
+  const card=document.createElement('div');card.className='photocard';
+  if(s.photo_path){
+   const {data:signed}=await db.storage.from('station-photos').createSignedUrl(s.photo_path,600);
+   if(signed?.signedUrl){const img=document.createElement('img');img.src=signed.signedUrl;img.alt='Фото предложенной станции';img.onclick=()=>{lightboxImg.src=signed.signedUrl;lightbox.classList.add('open')};card.appendChild(img)}
+  }
+  const meta=document.createElement('div');meta.className='photometa';
+  const eq=[s.has_tools?'🛠 Инструменты':'',s.has_rack?'🚲 Стойка':'',s.has_pump?'💨 Насос':''].filter(Boolean).join(' · ');
+  meta.innerHTML='<b>Repair Station #'+s.id+'</b><br>📍 '+Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+'<br>'+eq+'<br>🕐 '+new Date(s.created_at).toLocaleString('ru-RU');
+  card.appendChild(meta);
+  const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать на карте';show.onclick=()=>{adminModal.classList.remove('open');map.flyTo({center:[s.lng,s.lat],zoom:18});};card.appendChild(show);
+  const buttons=document.createElement('div');buttons.className='photobuttons';
+  const approve=document.createElement('button');approve.className='approve';approve.textContent='✅ Одобрить';approve.onclick=()=>moderateSubmission(s.id,'approved',card);
+  const reject=document.createElement('button');reject.className='reject';reject.textContent='❌ Отклонить';reject.onclick=()=>moderateSubmission(s.id,'rejected',card);
+  buttons.append(approve,reject);card.appendChild(buttons);submissionQueue.appendChild(card);
+ }
+}
+async function moderateSubmission(id,status,card){
+ const buttons=card.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);
+ let error=null;
+ if(status==='approved'){
+  const r=await db.rpc('approve_station_submission',{p_submission_id:id});error=r.error;
+ }else{
+  const r=await db.from('station_submissions').update({moderation_status:'rejected',reviewed_at:new Date().toISOString()}).eq('id',id);error=r.error;
+ }
+ if(error){console.error(error);buttons.forEach(b=>b.disabled=false);notice(status==='approved'?'Не удалось одобрить станцию':'Не удалось отклонить станцию');return}
+ card.remove();
+ notice(status==='approved'?'Repair Station добавлена на карту ✓':'Заявка отклонена');
+ if(status==='approved')await loadStations();
+ if(!submissionQueue.querySelector('.photocard'))submissionQueue.innerHTML='<div class="adminmsg">🎉 Новых станций нет.</div>';
+}
 async function loadPendingPhotos(){
  photoQueue.innerHTML='<div class="adminmsg">Загрузка фотографий…</div>';
  const {data,error}=await db.from('station_photos').select('id,station_id,storage_path,moderation_status,created_at').eq('moderation_status','pending').order('created_at',{ascending:true});
