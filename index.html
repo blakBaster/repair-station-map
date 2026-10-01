@@ -209,9 +209,17 @@ document.getElementById('alertBtn').onclick=async()=>{
  if(!status){notice('Выберите 1, 2 или 3');return}
  const message=prompt('Что хотите сообщить о станции?') ?? '';
  const defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'};
- const {error}=await db.from('station_reports').insert({station_id:activeStation.id,status,message:message.trim()||defaults[status]});
- if(error){console.error(error);notice('Не удалось отправить сообщение');return}
- markSpamAction('report');logDeviceActivity('report',activeStation.id);notice('Спасибо! Сообщение отправлено ✓');await loadAlert(activeStation.id);
+ const finalMessage=(message.trim()||defaults[status]).slice(0,500);
+ const {error}=await db.rpc('submit_station_report',{p_device_id:DEVICE_ID,p_station_id:activeStation.id,p_status:status,p_message:finalMessage});
+ if(error){
+  console.error(error);
+  const msg=String(error.message||'');
+  if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');
+  else if(msg.includes('RATE_LIMIT:')){const sec=Number((msg.match(/RATE_LIMIT:(\d+)/)||[])[1]||0);notice('⏳ Подождите ещё '+Math.max(1,Math.ceil(sec/60))+' мин.')}
+  else notice('Не удалось отправить сообщение');
+  return;
+ }
+ markSpamAction('report');notice('Спасибо! Сообщение отправлено ✓');await loadAlert(activeStation.id);
 };
 const photoInput=document.getElementById('photoInput');
 document.getElementById('photoBtn').onclick=async()=>{if(!spamAllowed('photo'))return;if(!await guardDevice('photo'))return;photoInput.click()};
