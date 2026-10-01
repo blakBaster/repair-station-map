@@ -25,7 +25,7 @@
   <div class="adminform"><input id="adminEmail" type="email" autocomplete="username" placeholder="Email администратора"><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Пароль"><button id="adminLogin">Войти</button></div>
   <div class="adminmsg">Доступ только для администратора Repair Station Map.</div>
  </div>
- <div id="adminLoggedIn" style="display:none"><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><h3 style="margin:18px 0 8px">📍 Предложенные станции</h3><div class="photoqueue" id="submissionQueue"></div><h3 style="margin:20px 0 8px">📷 Предложенные фото</h3><div class="photoqueue" id="photoQueue"></div></div>
+ <div id="adminLoggedIn" style="display:none"><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><h3 style="margin:18px 0 8px">📍 Предложенные станции</h3><div class="photoqueue" id="submissionQueue"></div><h3 style="margin:20px 0 8px">📷 Предложенные фото</h3><div class="photoqueue" id="photoQueue"></div><h3 style="margin:20px 0 8px">📱 Устройства</h3><div class="photoqueue" id="deviceQueue"></div></div>
 </div></div>
 <div class="panel" id="panel"><div class="row"><div class="icon">🔧</div><div><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div><div class="sub" id="stationDistance"></div></div></div><div class="stationmeta"><span class="statuspill unknown" id="stationStatus">⚪ Статус неизвестен</span><span class="checkedpill" id="lastChecked">Проверка не указана</span></div><div class="tools" id="stationTools"></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><div class="stationphotos" id="stationPhotos"></div><button class="alertbtn" id="alertBtn">Оставить сообщение о станции</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button><input id="photoInput" type="file" accept="image/*" hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
 <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
@@ -266,7 +266,7 @@ map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=(
 map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{'fill-extrusion-color':'#33465a','fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],'fill-extrusion-opacity':0.72}})}catch(e){console.warn('3D buildings:',e)}});
 
 document.getElementById('lightboxClose').onclick=()=>{lightbox.classList.remove('open');lightboxImg.src=''};lightbox.onclick=e=>{if(e.target===lightbox){lightbox.classList.remove('open');lightboxImg.src=''}};
-const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue'),submissionQueue=document.getElementById('submissionQueue');
+const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue'),submissionQueue=document.getElementById('submissionQueue'),deviceQueue=document.getElementById('deviceQueue');
 document.getElementById('adminOpen').onclick=async()=>{adminModal.classList.add('open');await refreshAdmin()};
 const brand=document.getElementById('brand');
 let adminPressTimer=null,adminLongPressed=false;
@@ -287,7 +287,7 @@ async function refreshAdmin(){
  if(!session){adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';return}
  const {data:isAdmin,error}=await db.rpc('is_admin');
  if(error||!isAdmin){await db.auth.signOut();adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';notice('У этого аккаунта нет прав администратора');return}
- adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos()]);
+ adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos(),loadDevices()]);
 }
 document.getElementById('adminLogin').onclick=async()=>{
  const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;
@@ -297,7 +297,31 @@ document.getElementById('adminLogin').onclick=async()=>{
  if(error){console.error(error);notice('Не удалось войти. Проверьте email и пароль.');return}
  document.getElementById('adminPassword').value='';await refreshAdmin();
 };
-document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();photoQueue.innerHTML='';submissionQueue.innerHTML='';await refreshAdmin()};
+document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();photoQueue.innerHTML='';submissionQueue.innerHTML='';deviceQueue.innerHTML='';await refreshAdmin()};
+async function loadDevices(){
+ deviceQueue.innerHTML='<div class="adminmsg">Загрузка устройств…</div>';
+ const [{data:devices,error},{data:activity,error:activityError}]=await Promise.all([
+  db.from('devices').select('device_id,device_type,os,browser,first_seen,last_seen,is_banned,banned_at').order('first_seen',{ascending:false}).limit(100),
+  db.from('device_activity').select('device_id,action_type,created_at').order('created_at',{ascending:false}).limit(1000)
+ ]);
+ if(error||activityError){console.error(error||activityError);deviceQueue.innerHTML='<div class="adminmsg">Не удалось загрузить устройства.</div>';return}
+ if(!devices?.length){deviceQueue.innerHTML='<div class="adminmsg">Устройств пока нет.</div>';return}
+ const stats={};
+ for(const a of activity||[]){const s=stats[a.device_id]||(stats[a.device_id]={total:0,report:0,photo:0,station_submission:0,last:null});s.total++;s[a.action_type]=(s[a.action_type]||0)+1;if(!s.last)s.last=a.created_at}
+ deviceQueue.innerHTML='';
+ for(const d of devices){
+  const s=stats[d.device_id]||{total:0,report:0,photo:0,station_submission:0,last:null};
+  const card=document.createElement('div');card.className='photocard';
+  const meta=document.createElement('div');meta.className='photometa';
+  const shortId=d.device_id.length>18?d.device_id.slice(0,8)+'…'+d.device_id.slice(-6):d.device_id;
+  meta.innerHTML='<b>'+(d.is_banned?'🚫 Заблокировано':'📱 Устройство')+'</b><br>'+escapeHtml(d.device_type||'Неизвестно')+' · '+escapeHtml(d.os||'Неизвестно')+' · '+escapeHtml(d.browser||'Неизвестно')+'<br><span title="'+escapeHtml(d.device_id)+'">ID: '+escapeHtml(shortId)+'</span><br>Активность: '+s.total+' · 💬 '+s.report+' · 📷 '+s.photo+' · 📍 '+s.station_submission+(s.last?'<br>Последняя: '+new Date(s.last).toLocaleString('ru-RU'):'');
+  card.appendChild(meta);
+  const buttons=document.createElement('div');buttons.className='photobuttons';
+  const toggle=document.createElement('button');toggle.className=d.is_banned?'approve':'reject';toggle.textContent=d.is_banned?'♻️ Разблокировать':'🚫 Заблокировать';
+  toggle.onclick=async()=>{toggle.disabled=true;const banned=!d.is_banned;const {error:e}=await db.from('devices').update({is_banned:banned,banned_at:banned?new Date().toISOString():null}).eq('device_id',d.device_id);if(e){console.error(e);toggle.disabled=false;notice('Не удалось изменить блокировку');return}notice(banned?'Устройство заблокировано':'Устройство разблокировано');await loadDevices()};
+  buttons.appendChild(toggle);card.appendChild(buttons);deviceQueue.appendChild(card);
+ }
+}
 async function loadPendingSubmissions(){
  submissionQueue.innerHTML='<div class="adminmsg">Загрузка заявок…</div>';
  const {data,error}=await db.from('station_submissions').select('id,lat,lng,has_tools,has_rack,has_pump,photo_path,created_at').eq('moderation_status','pending').order('created_at',{ascending:true});
