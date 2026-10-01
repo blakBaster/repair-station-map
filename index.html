@@ -120,11 +120,20 @@ function spamRemaining(kind){
  const last=Number(localStorage.getItem(spamKey(kind))||0),left=SPAM_LIMITS[kind]-(Date.now()-last);
  return Math.max(0,left);
 }
+let adminBypass=false;
+async function syncAdminBypass(){
+ const {data:{session}}=await db.auth.getSession();
+ if(!session){adminBypass=false;return false}
+ const {data,error}=await db.rpc('is_admin');
+ adminBypass=!error&&data===true;return adminBypass;
+}
 function spamAllowed(kind){
+ if(adminBypass)return true;
  const left=spamRemaining(kind);if(!left)return true;
  const min=Math.ceil(left/60000);notice('Подождите ещё '+min+' мин. перед следующей отправкой');return false;
 }
-function markSpamAction(kind){localStorage.setItem(spamKey(kind),String(Date.now()))}
+function markSpamAction(kind){if(!adminBypass)localStorage.setItem(spamKey(kind),String(Date.now()))}
+syncAdminBypass();
 function notice(t){const n=document.getElementById('notice');n.textContent=t;n.style.display='block';clearTimeout(window.__nt);window.__nt=setTimeout(()=>n.style.display='none',3000)}
 function normalizeStation(s){
  const lat=Number(s.lat??s.latitude),lng=Number(s.lng??s.longitude??s.lon);
@@ -324,10 +333,10 @@ document.getElementById('adminClose').onclick=()=>adminModal.classList.remove('o
 adminModal.onclick=e=>{if(e.target===adminModal)adminModal.classList.remove('open')};
 async function refreshAdmin(){
  const {data:{session}}=await db.auth.getSession();
- if(!session){adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';return}
+ if(!session){adminBypass=false;adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';return}
  const {data:isAdmin,error}=await db.rpc('is_admin');
  if(error||!isAdmin){await db.auth.signOut();adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';notice('У этого аккаунта нет прав администратора');return}
- adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos(),loadDevices()]);
+ adminBypass=true;adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos(),loadDevices()]);
 }
 document.getElementById('adminLogin').onclick=async()=>{
  const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;
@@ -337,7 +346,7 @@ document.getElementById('adminLogin').onclick=async()=>{
  if(error){console.error(error);notice('Не удалось войти. Проверьте email и пароль.');return}
  document.getElementById('adminPassword').value='';await refreshAdmin();
 };
-document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();photoQueue.innerHTML='';submissionQueue.innerHTML='';deviceQueue.innerHTML='';await refreshAdmin()};
+document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();adminBypass=false;photoQueue.innerHTML='';submissionQueue.innerHTML='';deviceQueue.innerHTML='';await refreshAdmin()};
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 async function loadDevices(){
  deviceQueue.innerHTML='<div class="adminmsg">Загрузка устройств…</div>';
