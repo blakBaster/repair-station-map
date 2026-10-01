@@ -184,13 +184,13 @@ document.getElementById('photoDeleteCancel').onclick=closePhotoDelete;document.g
 photoDeleteConfirm.onclick=async()=>{if(!pendingDeletePhoto)return;const x=pendingDeletePhoto;photoDeleteConfirm.disabled=true;const {error}=await db.rpc('admin_remove_station_photo',{p_photo_id:x.photoId});photoDeleteConfirm.disabled=false;if(error){console.error(error);notice('Не удалось удалить фото');return}closePhotoDelete();lightbox.classList.remove('open');currentLightboxPhoto=null;lightboxAdminDelete.classList.remove('show');notice('Фото убрано со станции');await loadApprovedPhotos(x.stationId);if(adminLoggedIn.style.display!=='none')await loadAuditLog()};
 lightboxAdminDelete.onclick=e=>{e.stopPropagation();if(currentLightboxPhoto)askDeletePhoto(currentLightboxPhoto.id,currentLightboxPhoto.stationId)};
 const photoStripPrev=document.getElementById('photoStripPrev'),photoStripNext=document.getElementById('photoStripNext');
-let photoWheelTarget=0,photoWheelRaf=0;
-function updatePhotoStripArrows(){if(!photoStripNext||!photoStripPrev)return;const desktop=window.innerWidth>800&&stationPhotos.classList.contains('show'),max=Math.max(0,stationPhotos.scrollWidth-stationPhotos.clientWidth);photoStripPrev.classList.toggle('show',desktop&&stationPhotos.scrollLeft>4);photoStripNext.classList.toggle('show',desktop&&stationPhotos.scrollLeft<max-4)}
-function animatePhotoWheel(){const d=photoWheelTarget-stationPhotos.scrollLeft;if(Math.abs(d)<.5){stationPhotos.scrollLeft=photoWheelTarget;photoWheelRaf=0;updatePhotoStripArrows();return}stationPhotos.scrollLeft+=d*.18;photoWheelRaf=requestAnimationFrame(animatePhotoWheel)}
-stationPhotos.addEventListener('wheel',e=>{if(window.innerWidth<=800||stationPhotos.scrollWidth<=stationPhotos.clientWidth)return;e.preventDefault();const max=Math.max(0,stationPhotos.scrollWidth-stationPhotos.clientWidth);photoWheelTarget=Math.max(0,Math.min(max,(photoWheelRaf?photoWheelTarget:stationPhotos.scrollLeft)+(e.deltaY||e.deltaX)*.7));if(!photoWheelRaf)photoWheelRaf=requestAnimationFrame(animatePhotoWheel)},{passive:false});
+let photoWheelTimer=null;
+function updatePhotoStripArrows(){if(!photoStripNext||!photoStripPrev)return;const desktop=window.innerWidth>800&&stationPhotos.classList.contains('show'),max=Math.max(0,stationPhotos.scrollWidth-stationPhotos.clientWidth),x=stationPhotos.scrollLeft;photoStripPrev.classList.toggle('show',desktop&&x>3);photoStripNext.classList.toggle('show',desktop&&x<max-3)}
+function smoothPhotoScrollBy(delta){stationPhotos.scrollBy({left:delta,behavior:'smooth'});clearTimeout(photoWheelTimer);photoWheelTimer=setTimeout(updatePhotoStripArrows,260)}
+stationPhotos.addEventListener('wheel',e=>{if(window.innerWidth<=800||stationPhotos.scrollWidth<=stationPhotos.clientWidth)return;const delta=Math.abs(e.deltaY)>=Math.abs(e.deltaX)?e.deltaY:e.deltaX;if(!delta)return;e.preventDefault();smoothPhotoScrollBy(delta*.9)},{passive:false});
 stationPhotos.addEventListener('scroll',updatePhotoStripArrows,{passive:true});
-photoStripNext.onclick=e=>{e.preventDefault();e.stopPropagation();stationPhotos.scrollBy({left:Math.max(158,stationPhotos.clientWidth*.7),behavior:'smooth'})};
-photoStripPrev.onclick=e=>{e.preventDefault();e.stopPropagation();stationPhotos.scrollBy({left:-Math.max(158,stationPhotos.clientWidth*.7),behavior:'smooth'})};
+photoStripNext.onclick=e=>{e.preventDefault();e.stopPropagation();smoothPhotoScrollBy(Math.max(158,stationPhotos.clientWidth*.7))};
+photoStripPrev.onclick=e=>{e.preventDefault();e.stopPropagation();smoothPhotoScrollBy(-Math.max(158,stationPhotos.clientWidth*.7))};
 window.addEventListener('resize',updatePhotoStripArrows);
 async function loadApprovedPhotos(stationId){
  stationPhotos.classList.remove('show');stationPhotos.innerHTML='';
