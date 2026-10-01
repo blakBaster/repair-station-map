@@ -232,9 +232,16 @@ photoInput.onchange=async()=>{
  const path='pending/'+activeStation.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
  const {error:uploadError}=await db.storage.from('station-photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
  if(uploadError){console.error(uploadError);notice('Не удалось загрузить фото');photoInput.value='';return}
- const {error:rowError}=await db.from('station_photos').insert({station_id:activeStation.id,storage_path:path,moderation_status:'pending'});
- if(rowError){console.error(rowError);notice('Фото загружено, но не удалось отправить на модерацию');photoInput.value='';return}
- markSpamAction('photo');logDeviceActivity('photo',activeStation.id);photoInput.value='';notice('Фото отправлено на модерацию ✓');
+ const {error:rowError}=await db.rpc('submit_station_photo',{p_device_id:DEVICE_ID,p_station_id:activeStation.id,p_storage_path:path});
+ if(rowError){
+  console.error(rowError);
+  const msg=String(rowError.message||'');
+  if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');
+  else if(msg.includes('RATE_LIMIT:')){const sec=Number((msg.match(/RATE_LIMIT:(\d+)/)||[])[1]||0);notice('⏳ Подождите ещё '+Math.max(1,Math.ceil(sec/60))+' мин.')}
+  else notice('Фото загружено, но не удалось отправить на модерацию');
+  photoInput.value='';return;
+ }
+ markSpamAction('photo');photoInput.value='';notice('Фото отправлено на модерацию ✓');
 };
 document.getElementById('close').onclick=()=>panel.classList.remove('open');
 document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
