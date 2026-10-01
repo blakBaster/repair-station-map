@@ -22,7 +22,7 @@
 @media(max-width:600px){.photo-delete-modal{padding:0 10px 12px}.photo-delete-card{padding:22px}.photo-delete-icon{width:60px;height:60px;min-width:60px}.photo-delete-copy h3{font-size:21px}.photo-delete-copy p{font-size:14px}.photo-delete-actions{grid-template-columns:1fr}.lightbox-admin-delete{right:72px;width:46px;height:46px}.lightbox-delete-label{display:none!important}}
 
 @media(min-width:801px){
- .panel{left:18px;right:auto;bottom:18px;width:min(470px,calc(100vw - 36px));max-height:calc(100vh - 110px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+ .panel{left:18px;right:auto;bottom:18px;width:min(500px,calc(100vw - 36px));max-height:calc(100vh - 110px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 }
 </style>
 </head>
@@ -205,7 +205,7 @@ function focusStationForCard(s){
  const zoom=Math.max(map.getZoom(),17);
  if(desktop){
   // Shift the map center left so the station itself appears centered in the free area to the right of the card.
-  const cardWidth=Math.min(470,window.innerWidth-36);
+  const cardWidth=Math.min(500,window.innerWidth-36);
   map.flyTo({center:[s.lng,s.lat],zoom,padding:{left:cardWidth+36,right:18,top:18,bottom:18},duration:650});
  }else{
   map.flyTo({center:[s.lng,s.lat],zoom:Math.max(map.getZoom(),16.5),duration:550});
