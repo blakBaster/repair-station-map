@@ -398,7 +398,7 @@ async function loadDevices(){
   card.appendChild(meta);
   const buttons=document.createElement('div');buttons.className='photobuttons';
   const toggle=document.createElement('button');toggle.className=d.is_banned?'approve':'reject';toggle.textContent=d.is_banned?'♻️ Разблокировать':'🚫 Заблокировать';
-  toggle.onclick=async()=>{toggle.disabled=true;const banned=!d.is_banned;const {error:e}=await db.from('devices').update({is_banned:banned,banned_at:banned?new Date().toISOString():null}).eq('device_id',d.device_id);if(e){console.error(e);toggle.disabled=false;notice('Не удалось изменить блокировку');return}notice(banned?'Устройство заблокировано':'Устройство разблокировано');await loadDevices()};
+  toggle.onclick=async()=>{toggle.disabled=true;const banned=!d.is_banned;const {error:e}=await db.rpc('admin_set_device_ban',{p_device_id:d.device_id,p_banned:banned});if(e){console.error(e);toggle.disabled=false;notice('Не удалось изменить блокировку');return}notice(banned?'Устройство заблокировано':'Устройство разблокировано');await Promise.all([loadDevices(),loadAuditLog()])};
   buttons.appendChild(toggle);card.appendChild(buttons);deviceQueue.appendChild(card);
  }
 }
@@ -415,7 +415,7 @@ async function addSenderControls(card,deviceId){
  card.appendChild(box);
  if(d&&!d.is_banned){
   const ban=document.createElement('button');ban.className='reject';ban.style.margin='8px 0';ban.textContent='🚫 Заблокировать устройство';
-  ban.onclick=async()=>{ban.disabled=true;const {error}=await db.from('devices').update({is_banned:true,banned_at:new Date().toISOString()}).eq('device_id',deviceId);if(error){ban.disabled=false;notice('Не удалось заблокировать устройство');return}ban.textContent='🚫 Устройство заблокировано';notice('Устройство заблокировано')};
+  ban.onclick=async()=>{ban.disabled=true;const {error}=await db.rpc('admin_set_device_ban',{p_device_id:deviceId,p_banned:true});if(error){ban.disabled=false;notice('Не удалось заблокировать устройство');return}ban.textContent='🚫 Устройство заблокировано';notice('Устройство заблокировано');await loadAuditLog()};
   card.appendChild(ban);
  }
 }
@@ -458,12 +458,13 @@ async function moderateSubmission(id,status,card){
  if(status==='approved'){
   const r=await db.rpc('approve_station_submission',{p_submission_id:id});error=r.error;
  }else{
-  const r=await db.from('station_submissions').update({moderation_status:'rejected',reviewed_at:new Date().toISOString()}).eq('id',id);error=r.error;
+  const r=await db.rpc('admin_reject_station_submission',{p_submission_id:id});error=r.error;
  }
  if(error){console.error(error);buttons.forEach(b=>b.disabled=false);notice(status==='approved'?'Не удалось одобрить станцию':'Не удалось отклонить станцию');return}
  card.remove();
  notice(status==='approved'?'Repair Station добавлена на карту ✓':'Заявка отклонена');
  if(status==='approved')await loadStations();
+ await loadAuditLog();
  if(!submissionQueue.querySelector('.photocard'))submissionQueue.innerHTML='<div class="adminmsg">🎉 Новых станций нет.</div>';
 }
 async function loadPendingPhotos(){
@@ -496,10 +497,11 @@ async function loadPendingPhotos(){
 }
 async function moderatePhoto(id,status,card){
  const buttons=card.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);
- const {error}=await db.from('station_photos').update({moderation_status:status,reviewed_at:new Date().toISOString()}).eq('id',id);
+ const {error}=await db.rpc('admin_moderate_photo',{p_photo_id:id,p_status:status});
  if(error){console.error(error);buttons.forEach(b=>b.disabled=false);notice('Не удалось изменить статус фото');return}
  card.remove();notice(status==='approved'?'Фото одобрено':'Фото отклонено');
  if(!photoQueue.querySelector('.photocard'))photoQueue.innerHTML='<div class="adminmsg">🎉 Очередь пуста — новых фото нет.</div>';
+ await loadAuditLog();
 }
 
 map.on('click',e=>{
