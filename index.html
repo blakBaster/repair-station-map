@@ -93,8 +93,19 @@ async function isDeviceBanned(){
  if(error){console.warn('Ban check:',error);return false}
  return data===true;
 }
-async function guardDevice(){
+async function guardDevice(actionType){
  if(await isDeviceBanned()){notice('🚫 Это устройство заблокировано');return false}
+ const {data,error}=await db.rpc('check_device_rate_limit',{p_device_id:DEVICE_ID,p_action_type:actionType});
+ if(error){
+  console.warn('Rate limit check:',error);
+  if(String(error.message||'').includes('DEVICE_BANNED')){notice('🚫 Это устройство заблокировано');return false}
+  notice('Не удалось проверить защиту. Попробуйте ещё раз.');return false;
+ }
+ const seconds=Math.max(0,Number(data)||0);
+ if(seconds>0){
+  const min=Math.ceil(seconds/60);
+  notice('⏳ Подождите ещё '+min+' мин.');return false;
+ }
  return true;
 }
 async function logDeviceActivity(actionType,stationId=null){
@@ -191,7 +202,7 @@ async function loadStations(){
 }
 document.getElementById('alertBtn').onclick=async()=>{
  if(!spamAllowed('report'))return;
- if(!await guardDevice())return;
+ if(!await guardDevice('report'))return;
  const choice=prompt('Статус станции:\n1 — Работает\n2 — Частично работает\n3 — Не работает');
  if(choice===null)return;
  const statuses={'1':'working','2':'partial','3':'broken'},status=statuses[String(choice).trim()];
@@ -203,7 +214,7 @@ document.getElementById('alertBtn').onclick=async()=>{
  markSpamAction('report');logDeviceActivity('report',activeStation.id);notice('Спасибо! Сообщение отправлено ✓');await loadAlert(activeStation.id);
 };
 const photoInput=document.getElementById('photoInput');
-document.getElementById('photoBtn').onclick=async()=>{if(!spamAllowed('photo'))return;if(!await guardDevice())return;photoInput.click()};
+document.getElementById('photoBtn').onclick=async()=>{if(!spamAllowed('photo'))return;if(!await guardDevice('photo'))return;photoInput.click()};
 photoInput.onchange=async()=>{
  const file=photoInput.files&&photoInput.files[0];if(!file)return;
  if(!file.type.startsWith('image/')){notice('Выберите фотографию');photoInput.value='';return}
@@ -244,7 +255,7 @@ document.getElementById('suggest').onclick=()=>{suggesting=true;panel.classList.
 document.getElementById('suggestCancel').onclick=()=>{suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src')};
 document.getElementById('suggestSend').onclick=async()=>{
  if(!spamAllowed('station'))return;
- if(!await guardDevice())return;
+ if(!await guardDevice('station_submission'))return;
  const btn=document.getElementById('suggestSend'),center=map.getCenter(),photo=suggestPhoto.files&&suggestPhoto.files[0];
  const payload={lat:center.lat,lng:center.lng,has_tools:document.getElementById('sTools').checked,has_rack:document.getElementById('sRack').checked,has_pump:document.getElementById('sPump').checked,moderation_status:'pending',photo_path:null};
  if(!payload.has_tools&&!payload.has_rack&&!payload.has_pump){notice('Отметьте хотя бы одно оборудование');return}
