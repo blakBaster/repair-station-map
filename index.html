@@ -152,7 +152,7 @@ function spamAllowed(kind){
 }
 function markSpamAction(kind){if(!adminBypass)localStorage.setItem(spamKey(kind),String(Date.now()))}
 syncAdminBypass();
-function notice(t){const n=document.getElementById('notice');n.textContent=t;n.style.display='block';clearTimeout(window.__nt);window.__nt=setTimeout(()=>n.style.display='none',3000)}
+function notice(t){const n=document.getElementById('notice');n.textContent=t;n.style.display='block';clearTimeout(window.__nt);window.__nt=setTimeout(()=>n.style.display='none',5500)}
 function normalizeStation(s){
  const lat=Number(s.lat??s.latitude),lng=Number(s.lng??s.longitude??s.lon);
  let equipment=s.equipment??s.tools;
@@ -461,7 +461,7 @@ const auditClearModal=document.getElementById('auditClearModal');
 document.getElementById('auditClearOpen').onclick=()=>auditClearModal.classList.add('open');
 document.getElementById('auditClearCancel').onclick=()=>auditClearModal.classList.remove('open');
 auditClearModal.onclick=e=>{if(e.target===auditClearModal)auditClearModal.classList.remove('open')};
-auditClearModal.querySelectorAll('[data-days]').forEach(b=>b.onclick=async()=>{const days=Number(b.dataset.days),label=days===0?'весь журнал':'записи старше '+days+' дней';if(!confirm('Удалить '+label+'? Возможность отката этих записей исчезнет.'))return;b.disabled=true;const {data,error}=await db.rpc('admin_clear_audit_log',{p_older_than_days:days});b.disabled=false;if(error){console.error(error);notice('Не удалось очистить журнал');return}auditClearModal.classList.remove('open');notice('Удалено записей: '+Number(data||0));await loadAuditLog()});
+auditClearModal.querySelectorAll('[data-days]').forEach(b=>b.onclick=async()=>{const days=Number(b.dataset.days),label=days===0?'весь журнал':'записи старше '+days+' дней';if(!confirm('Удалить '+label+'? Возможность отката этих записей исчезнет.'))return;b.disabled=true;const {data,error}=await db.rpc('admin_clear_audit_log',{p_older_than_days:days});b.disabled=false;if(error){console.error('admin_clear_audit_log:',error);notice('Ошибка очистки: '+(error.message||error.code||'неизвестная ошибка'));return}auditClearModal.classList.remove('open');notice('Удалено записей: '+Number(data||0));await loadAuditLog()});
 async function loadAuditLog(){
  auditQueue.innerHTML='<div class="adminmsg">Загрузка журнала…</div>';
  const {data,error}=await db.from('audit_log').select('id,action_type,target_type,target_id,device_id,previous_state,new_state,can_undo,undone,created_at').order('created_at',{ascending:false}).limit(100);
