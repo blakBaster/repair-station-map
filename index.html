@@ -25,7 +25,7 @@
   <div class="adminform"><input id="adminEmail" type="email" autocomplete="username" placeholder="Email администратора"><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Пароль"><button id="adminLogin">Войти</button></div>
   <div class="adminmsg">Доступ только для администратора Repair Station Map.</div>
  </div>
- <div id="adminLoggedIn" style="display:none"><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><h3 style="margin:18px 0 8px">📍 Предложенные станции</h3><div class="photoqueue" id="submissionQueue"></div><h3 style="margin:20px 0 8px">📷 Предложенные фото</h3><div class="photoqueue" id="photoQueue"></div><h3 style="margin:20px 0 8px">📱 Устройства</h3><div class="photoqueue" id="deviceQueue"></div></div>
+ <div id="adminLoggedIn" style="display:none"><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><h3 style="margin:18px 0 8px">📍 Предложенные станции</h3><div class="photoqueue" id="submissionQueue"></div><h3 style="margin:20px 0 8px">📷 Предложенные фото</h3><div class="photoqueue" id="photoQueue"></div><h3 style="margin:20px 0 8px">📱 Устройства</h3><div class="photoqueue" id="deviceQueue"></div><h3 style="margin:20px 0 8px">📜 Журнал действий</h3><div class="photoqueue" id="auditQueue"></div></div>
 </div></div>
 <div class="panel" id="panel"><div class="row"><div class="icon">🔧</div><div><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div><div class="sub" id="stationDistance"></div></div></div><div class="stationmeta"><span class="statuspill unknown" id="stationStatus">⚪ Статус неизвестен</span><span class="checkedpill" id="lastChecked">Проверка не указана</span></div><div class="tools" id="stationTools"></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><div class="stationphotos" id="stationPhotos"></div><button class="alertbtn" id="alertBtn">Оставить сообщение о станции</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button><input id="photoInput" type="file" accept="image/*" hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
 <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
@@ -328,7 +328,7 @@ map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=(
 map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{'fill-extrusion-color':'#33465a','fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],'fill-extrusion-opacity':0.72}})}catch(e){console.warn('3D buildings:',e)}});
 
 document.getElementById('lightboxClose').onclick=()=>{lightbox.classList.remove('open');lightboxImg.src=''};lightbox.onclick=e=>{if(e.target===lightbox){lightbox.classList.remove('open');lightboxImg.src=''}};
-const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue'),submissionQueue=document.getElementById('submissionQueue'),deviceQueue=document.getElementById('deviceQueue');
+const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue'),submissionQueue=document.getElementById('submissionQueue'),deviceQueue=document.getElementById('deviceQueue'),auditQueue=document.getElementById('auditQueue');
 document.getElementById('adminOpen').onclick=async()=>{adminModal.classList.add('open');await refreshAdmin()};
 const brand=document.getElementById('brand');
 let adminPressTimer=null,adminLongPressed=false;
@@ -349,7 +349,7 @@ async function refreshAdmin(){
  if(!session){adminBypass=false;adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';return}
  const {data:isAdmin,error}=await db.rpc('is_admin');
  if(error||!isAdmin){await db.auth.signOut();adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';notice('У этого аккаунта нет прав администратора');return}
- adminBypass=true;adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos(),loadDevices()]);
+ adminBypass=true;adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadAuditLog()]);
 }
 document.getElementById('adminLogin').onclick=async()=>{
  const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;
@@ -361,6 +361,23 @@ document.getElementById('adminLogin').onclick=async()=>{
 };
 document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();adminBypass=false;photoQueue.innerHTML='';submissionQueue.innerHTML='';deviceQueue.innerHTML='';await refreshAdmin()};
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+async function loadAuditLog(){
+ auditQueue.innerHTML='<div class="adminmsg">Загрузка журнала…</div>';
+ const {data,error}=await db.from('audit_log').select('id,action_type,target_type,target_id,device_id,can_undo,undone,created_at').order('created_at',{ascending:false}).limit(100);
+ if(error){console.error(error);auditQueue.innerHTML='<div class="adminmsg">Не удалось загрузить журнал.</div>';return}
+ if(!data?.length){auditQueue.innerHTML='<div class="adminmsg">Журнал пока пуст.</div>';return}
+ const labels={photo_approved:'✅ Одобрено фото',photo_rejected:'❌ Отклонено фото',station_submission_approved:'✅ Одобрена станция',station_submission_rejected:'❌ Отклонена станция',device_banned:'🚫 Заблокировано устройство',device_unbanned:'♻️ Разблокировано устройство'};
+ auditQueue.innerHTML='';
+ for(const a of data){
+  const card=document.createElement('div');card.className='photocard';
+  const meta=document.createElement('div');meta.className='photometa';
+  const dev=a.device_id?(a.device_id.length>18?a.device_id.slice(0,8)+'…'+a.device_id.slice(-6):a.device_id):'—';
+  meta.innerHTML='<b>'+escapeHtml(labels[a.action_type]||a.action_type)+'</b><br>Объект: '+escapeHtml(a.target_type)+' #'+escapeHtml(a.target_id||'—')+'<br>Device: '+escapeHtml(dev)+'<br>🕐 '+new Date(a.created_at).toLocaleString('ru-RU')+(a.undone?'<br>↩ Уже отменено':'');
+  card.appendChild(meta);
+  if(a.can_undo&&!a.undone){const b=document.createElement('button');b.className='adminlogout';b.style.marginTop='10px';b.textContent='↩ Откатить';b.onclick=async()=>{b.disabled=true;const {error:e}=await db.rpc('admin_undo_audit_action',{p_audit_id:a.id});if(e){console.error(e);b.disabled=false;notice('Не удалось откатить действие');return}notice('Действие отменено ↩');await Promise.all([loadAuditLog(),loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadStations()])};card.appendChild(b)}
+  auditQueue.appendChild(card);
+ }
+}
 async function loadDevices(){
  deviceQueue.innerHTML='<div class="adminmsg">Загрузка устройств…</div>';
  const [{data:devices,error},{data:activity,error:activityError}]=await Promise.all([
