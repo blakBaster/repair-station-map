@@ -463,7 +463,7 @@ async function refreshAdmin(){
  if(!session){adminBypass=false;adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';return}
  const {data:isAdmin,error}=await db.rpc('is_admin');
  if(error||!isAdmin){await db.auth.signOut();adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';notice('У этого аккаунта нет прав администратора');return}
- adminBypass=true;adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadAuditLog()]);
+ adminBypass=true;adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadAdminUsers(),loadAuditLog()]);
 }
 document.getElementById('adminLogin').onclick=async()=>{
  const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;
