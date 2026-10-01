@@ -298,6 +298,7 @@ document.getElementById('adminLogin').onclick=async()=>{
  document.getElementById('adminPassword').value='';await refreshAdmin();
 };
 document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut();photoQueue.innerHTML='';submissionQueue.innerHTML='';deviceQueue.innerHTML='';await refreshAdmin()};
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 async function loadDevices(){
  deviceQueue.innerHTML='<div class="adminmsg">Загрузка устройств…</div>';
  const [{data:devices,error},{data:activity,error:activityError}]=await Promise.all([
