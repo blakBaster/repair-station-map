@@ -441,10 +441,11 @@ async function loadPendingPhotos(){
   const {data:signed,error:urlError}=await db.storage.from('station-photos').createSignedUrl(p.storage_path,600);
   const card=document.createElement('div');card.className='photocard';
   if(urlError||!signed?.signedUrl){card.innerHTML='<div class="adminmsg">Не удалось открыть фото #'+p.id+'</div>';photoQueue.appendChild(card);continue}
-  const img=document.createElement('img');img.src=signed.signedUrl;img.alt='Фото на модерации';card.appendChild(img);
+  const img=document.createElement('img');img.src=signed.signedUrl;img.alt='Фото на модерации';img.style.cursor='zoom-in';img.onclick=()=>{lightboxImg.src=signed.signedUrl;lightbox.classList.add('open')};card.appendChild(img);
   const station=stations.find(s=>String(s.id)===String(p.station_id));
   const meta=document.createElement('div');meta.className='photometa';
-  meta.innerHTML='<b>Фото #'+p.id+'</b><br>🔧 Для станции: '+escapeHtml(station?.name||'Repair Station')+' #'+p.station_id+(station?' <br>📍 '+Number(station.lat).toFixed(6)+', '+Number(station.lng).toFixed(6):'')+'<br>🕐 '+new Date(p.created_at).toLocaleString('ru-RU');
+  const sender=p.device_id?(p.device_id.length>18?p.device_id.slice(0,8)+'…'+p.device_id.slice(-6):p.device_id):null;
+  meta.innerHTML='<b>Фото #'+p.id+'</b><br>🔧 Для станции: '+escapeHtml(station?.name||'Repair Station')+' #'+p.station_id+(station?' <br>📍 '+Number(station.lat).toFixed(6)+', '+Number(station.lng).toFixed(6):'')+(sender?'<br>👤 Device: '+escapeHtml(sender):'<br>👤 Отправитель: старое фото')+'<br>🕐 '+new Date(p.created_at).toLocaleString('ru-RU');
   card.appendChild(meta);
   if(station){
    const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать станцию на карте';
