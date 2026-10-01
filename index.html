@@ -387,7 +387,7 @@ async function loadDevices(){
 }
 async function loadPendingSubmissions(){
  submissionQueue.innerHTML='<div class="adminmsg">Загрузка заявок…</div>';
- const {data,error}=await db.from('station_submissions').select('id,lat,lng,has_tools,has_rack,has_pump,photo_path,created_at').eq('moderation_status','pending').order('created_at',{ascending:true});
+ const {data,error}=await db.from('station_submissions').select('id,lat,lng,has_tools,has_rack,has_pump,photo_path,device_id,created_at').eq('moderation_status','pending').order('created_at',{ascending:true});
  if(error){console.error(error);submissionQueue.innerHTML='<div class="adminmsg">Не удалось загрузить заявки.</div>';return}
  if(!data?.length){submissionQueue.innerHTML='<div class="adminmsg">🎉 Новых станций нет.</div>';return}
  submissionQueue.innerHTML='';
@@ -431,7 +431,7 @@ async function moderateSubmission(id,status,card){
 }
 async function loadPendingPhotos(){
  photoQueue.innerHTML='<div class="adminmsg">Загрузка фотографий…</div>';
- const {data,error}=await db.from('station_photos').select('id,station_id,storage_path,moderation_status,created_at').eq('moderation_status','pending').order('created_at',{ascending:true});
+ const {data,error}=await db.from('station_photos').select('id,station_id,storage_path,moderation_status,device_id,created_at').eq('moderation_status','pending').order('created_at',{ascending:true});
  if(error){console.error(error);photoQueue.innerHTML='<div class="adminmsg">Не удалось загрузить очередь.</div>';return}
  if(!data?.length){photoQueue.innerHTML='<div class="adminmsg">🎉 Очередь пуста — новых фото нет.</div>';return}
  photoQueue.innerHTML='';
