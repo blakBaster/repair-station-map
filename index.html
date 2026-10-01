@@ -399,7 +399,9 @@ async function loadPendingSubmissions(){
   }
   const meta=document.createElement('div');meta.className='photometa';
   const eq=[s.has_tools?'🛠 Инструменты':'',s.has_rack?'🚲 Стойка':'',s.has_pump?'💨 Насос':''].filter(Boolean).join(' · ');
-  meta.innerHTML='<b>Repair Station #'+s.id+'</b><br>📍 '+Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+'<br>'+eq+'<br>🕐 '+new Date(s.created_at).toLocaleString('ru-RU');
+  let nearest=Infinity;for(const st of stations)nearest=Math.min(nearest,distanceMeters(Number(s.lat),Number(s.lng),st.lat,st.lng));
+  const sender=s.device_id?(s.device_id.length>18?s.device_id.slice(0,8)+'…'+s.device_id.slice(-6):s.device_id):null;
+  meta.innerHTML='<b>Repair Station #'+s.id+'</b><br>📍 '+Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+'<br>'+eq+(Number.isFinite(nearest)?'<br>📏 До ближайшей станции: '+formatDistance(nearest):'')+(sender?'<br>👤 Device: '+escapeHtml(sender):'<br>👤 Отправитель: старая заявка')+'<br>🕐 '+new Date(s.created_at).toLocaleString('ru-RU');
   card.appendChild(meta);
   const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать на карте';show.onclick=()=>{
    adminModal.classList.remove('open');
