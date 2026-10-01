@@ -20,6 +20,10 @@
 .photo-delete-modal{position:fixed;z-index:100;inset:0;display:none;align-items:flex-end;justify-content:center;padding:0 18px 28px;background:#030a16c7;backdrop-filter:blur(12px)}.photo-delete-modal.open{display:flex}.photo-delete-card{position:relative;width:min(560px,100%);padding:28px;border:1px solid #33455f;border-radius:24px;background:#0c192b;color:#f8fafc;box-shadow:0 28px 80px #000c}.photo-delete-head{display:flex;align-items:center;gap:20px;padding-right:42px}.photo-delete-icon{width:72px;height:72px;min-width:72px;border-radius:50%;display:grid;place-items:center;background:#661d35;color:#ff526a}.photo-delete-icon svg{width:30px;height:30px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.photo-delete-copy h3{margin:0 0 8px;color:#f8fafc;font-size:24px;line-height:1.15}.photo-delete-copy p{margin:0;color:#aeb9ca;font-size:16px;line-height:1.45}.photo-delete-x{position:absolute;right:18px;top:18px;width:42px;height:42px;border:1px solid #ffffff10;border-radius:13px;background:#17253b;color:#fff;font-size:22px;cursor:pointer}.photo-delete-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:25px}.photo-delete-actions button{height:56px;border-radius:15px;font-size:16px;font-weight:800;cursor:pointer}.photo-delete-cancel{border:1px solid #304661;background:#192b47;color:#f8fafc}.photo-delete-confirm{border:1px solid #ff6578;background:#f53250;color:#fff;display:flex;align-items:center;justify-content:center;gap:9px}.photo-delete-confirm svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .lightbox-admin-delete{position:absolute;z-index:3;right:76px;top:max(14px,env(safe-area-inset-top));width:50px;height:50px;border:1px solid #ff788a;border-radius:50%;background:#f53250;color:#fff;display:none;place-items:center;cursor:pointer;box-shadow:0 0 0 8px #6f26384f,0 8px 20px #0008}.lightbox-admin-delete.show{display:grid}.lightbox-admin-delete svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.lightbox-delete-label{position:absolute;z-index:3;right:60px;top:74px;display:none;background:#091526e8;border:1px solid #26384f;border-radius:13px;color:#f8fafc;padding:9px 13px;font-size:13px;font-weight:750;box-shadow:0 8px 22px #0007}.lightbox-admin-delete.show+.lightbox-delete-label{display:block}
 @media(max-width:600px){.photo-delete-modal{padding:0 10px 12px}.photo-delete-card{padding:22px}.photo-delete-icon{width:60px;height:60px;min-width:60px}.photo-delete-copy h3{font-size:21px}.photo-delete-copy p{font-size:14px}.photo-delete-actions{grid-template-columns:1fr}.lightbox-admin-delete{right:72px;width:46px;height:46px}.lightbox-delete-label{display:none!important}}
+
+@media(min-width:801px){
+ .panel{left:18px;right:auto;bottom:18px;width:min(470px,calc(100vw - 36px));max-height:calc(100vh - 110px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
 </style>
 </head>
 <body>
@@ -196,6 +200,17 @@ async function loadApprovedPhotos(stationId){
  }
  if(stationPhotos.children.length)stationPhotos.classList.add('show');
 }
+function focusStationForCard(s){
+ const desktop=window.matchMedia('(min-width:801px)').matches;
+ const zoom=Math.max(map.getZoom(),17);
+ if(desktop){
+  // Shift the map center left so the station itself appears centered in the free area to the right of the card.
+  const cardWidth=Math.min(470,window.innerWidth-36);
+  map.flyTo({center:[s.lng,s.lat],zoom,padding:{left:cardWidth+36,right:18,top:18,bottom:18},duration:650});
+ }else{
+  map.flyTo({center:[s.lng,s.lat],zoom:Math.max(map.getZoom(),16.5),duration:550});
+ }
+}
 function renderStation(s){
  activeStation=s;
  stationTitle.textContent=s.name==='Repair Station #001'?'Repair Station':s.name;
@@ -205,7 +220,7 @@ function renderStation(s){
  stationTools.innerHTML='';
  s.equipment.forEach(t=>{const e=document.createElement('span');e.className='chip';e.textContent=`${equipmentIcon(String(t))} ${t}`;stationTools.appendChild(e)});
  alertText.textContent='Загрузка…';alertDate.textContent='';
- panel.classList.add('open');panel.scrollTop=0;loadAlert(s.id);loadApprovedPhotos(s.id);
+ panel.classList.add('open');panel.scrollTop=0;focusStationForCard(s);loadAlert(s.id);loadApprovedPhotos(s.id);
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
