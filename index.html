@@ -55,6 +55,17 @@ satelliteBtn.onclick=()=>{
 };
 const panel=document.getElementById('panel'), alertText=document.getElementById('alertText'), alertDate=document.getElementById('alertDate');
 const stationTitle=document.getElementById('stationTitle'), stationCoords=document.getElementById('stationCoords'), stationDistance=document.getElementById('stationDistance'), stationTools=document.getElementById('stationTools'), stationStatus=document.getElementById('stationStatus'), lastChecked=document.getElementById('lastChecked'), stationPhotos=document.getElementById('stationPhotos'), lightbox=document.getElementById('lightbox'), lightboxImg=document.getElementById('lightboxImg');
+const SPAM_LIMITS={report:5*60*1000,photo:10*60*1000,station:10*60*1000};
+function spamKey(kind){return 'repair_station_last_'+kind}
+function spamRemaining(kind){
+ const last=Number(localStorage.getItem(spamKey(kind))||0),left=SPAM_LIMITS[kind]-(Date.now()-last);
+ return Math.max(0,left);
+}
+function spamAllowed(kind){
+ const left=spamRemaining(kind);if(!left)return true;
+ const min=Math.ceil(left/60000);notice('Подождите ещё '+min+' мин. перед следующей отправкой');return false;
+}
+function markSpamAction(kind){localStorage.setItem(spamKey(kind),String(Date.now()))}
 function notice(t){const n=document.getElementById('notice');n.textContent=t;n.style.display='block';clearTimeout(window.__nt);window.__nt=setTimeout(()=>n.style.display='none',3000)}
 function normalizeStation(s){
  const lat=Number(s.lat??s.latitude),lng=Number(s.lng??s.longitude??s.lon);
@@ -131,6 +142,7 @@ async function loadStations(){
  stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);
 }
 document.getElementById('alertBtn').onclick=async()=>{
+ if(!spamAllowed('report'))return;
  const choice=prompt('Статус станции:\n1 — Работает\n2 — Частично работает\n3 — Не работает');
  if(choice===null)return;
  const statuses={'1':'working','2':'partial','3':'broken'},status=statuses[String(choice).trim()];
@@ -139,10 +151,10 @@ document.getElementById('alertBtn').onclick=async()=>{
  const defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'};
  const {error}=await db.from('station_reports').insert({station_id:activeStation.id,status,message:message.trim()||defaults[status]});
  if(error){console.error(error);notice('Не удалось отправить сообщение');return}
- notice('Спасибо! Сообщение отправлено ✓');await loadAlert(activeStation.id);
+ markSpamAction('report');notice('Спасибо! Сообщение отправлено ✓');await loadAlert(activeStation.id);
 };
 const photoInput=document.getElementById('photoInput');
-document.getElementById('photoBtn').onclick=()=>photoInput.click();
+document.getElementById('photoBtn').onclick=()=>{if(spamAllowed('photo'))photoInput.click()};
 photoInput.onchange=async()=>{
  const file=photoInput.files&&photoInput.files[0];if(!file)return;
  if(!file.type.startsWith('image/')){notice('Выберите фотографию');photoInput.value='';return}
@@ -154,7 +166,7 @@ photoInput.onchange=async()=>{
  if(uploadError){console.error(uploadError);notice('Не удалось загрузить фото');photoInput.value='';return}
  const {error:rowError}=await db.from('station_photos').insert({station_id:activeStation.id,storage_path:path,moderation_status:'pending'});
  if(rowError){console.error(rowError);notice('Фото загружено, но не удалось отправить на модерацию');photoInput.value='';return}
- photoInput.value='';notice('Фото отправлено на модерацию ✓');
+ markSpamAction('photo');photoInput.value='';notice('Фото отправлено на модерацию ✓');
 };
 document.getElementById('close').onclick=()=>panel.classList.remove('open');
 document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
@@ -182,6 +194,7 @@ suggestPhoto.onchange=()=>{const file=suggestPhoto.files&&suggestPhoto.files[0];
 document.getElementById('suggest').onclick=()=>{suggesting=true;panel.classList.remove('open');suggestBox.classList.add('open');pickPin.classList.add('show');notice('Передвиньте карту и поставьте 📍 на Repair Station')};
 document.getElementById('suggestCancel').onclick=()=>{suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src')};
 document.getElementById('suggestSend').onclick=async()=>{
+ if(!spamAllowed('station'))return;
  const btn=document.getElementById('suggestSend'),center=map.getCenter(),photo=suggestPhoto.files&&suggestPhoto.files[0];
  const payload={lat:center.lat,lng:center.lng,has_tools:document.getElementById('sTools').checked,has_rack:document.getElementById('sRack').checked,has_pump:document.getElementById('sPump').checked,moderation_status:'pending',photo_path:null};
  if(!payload.has_tools&&!payload.has_rack&&!payload.has_pump){notice('Отметьте хотя бы одно оборудование');return}
@@ -198,7 +211,7 @@ document.getElementById('suggestSend').onclick=async()=>{
   const {error}=await db.from('station_submissions').insert(payload);
   if(error)throw new Error('SUBMISSION_INSERT: '+error.message);
   localStorage.removeItem('pending_station_suggestion');suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src');
-  notice('Спасибо! Repair Station отправлена на модерацию ✓');
+  markSpamAction('station');notice('Спасибо! Repair Station отправлена на модерацию ✓');
  }catch(e){
   console.error(e);
   const msg=String(e&&e.message||e);
