@@ -39,7 +39,7 @@ const STREET_STYLE='https://tiles.openfreemap.org/styles/fiord';
 const SATELLITE_STYLE={version:8,sources:{satellite:{type:'raster',tiles:[`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`],tileSize:256,attribution:'© MapTiler © OpenStreetMap contributors'}},layers:[{id:'satellite',type:'raster',source:'satellite'}]};
 
 const fallbackStation={id:1,name:'Repair Station',lat:52.231823780917104,lng:20.9849785985799,equipment:['Набор инструментов','Ремонтная стойка','Насос'],status:'unknown',lastChecked:null};
-let stations=[], activeStation=fallbackStation, stationMarkers=[];
+let stations=[], activeStation=fallbackStation, stationMarkers=[], moderationMarker=null;
 const map=new maplibregl.Map({container:'map',style:STREET_STYLE,pitch:0,bearing:0,center:[fallbackStation.lng,fallbackStation.lat],zoom:15,attributionControl:true,touchPitch:true,touchZoomRotate:true,dragRotate:true,pitchWithRotate:true});
 map.dragPan.enable();map.scrollZoom.enable();map.dragRotate.enable();map.touchZoomRotate.enable();if(map.touchPitch)map.touchPitch.enable();
 map.scrollZoom.setWheelZoomRate(1/900);map.scrollZoom.setZoomRate(1/120);
@@ -401,7 +401,14 @@ async function loadPendingSubmissions(){
   const eq=[s.has_tools?'🛠 Инструменты':'',s.has_rack?'🚲 Стойка':'',s.has_pump?'💨 Насос':''].filter(Boolean).join(' · ');
   meta.innerHTML='<b>Repair Station #'+s.id+'</b><br>📍 '+Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+'<br>'+eq+'<br>🕐 '+new Date(s.created_at).toLocaleString('ru-RU');
   card.appendChild(meta);
-  const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать на карте';show.onclick=()=>{adminModal.classList.remove('open');map.flyTo({center:[s.lng,s.lat],zoom:18});notice('📍 Здесь пользователь предлагает новую Repair Station');};card.appendChild(show);
+  const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать на карте';show.onclick=()=>{
+   adminModal.classList.remove('open');
+   if(moderationMarker)moderationMarker.remove();
+   const el=document.createElement('div');el.textContent='📍';el.style.fontSize='42px';el.style.lineHeight='42px';el.style.filter='drop-shadow(0 3px 4px rgba(0,0,0,.65))';el.title='Предложенная Repair Station';
+   moderationMarker=new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([s.lng,s.lat]).addTo(map);
+   map.flyTo({center:[s.lng,s.lat],zoom:18});
+   notice('📍 Здесь пользователь предлагает новую Repair Station');
+  };card.appendChild(show);
   const buttons=document.createElement('div');buttons.className='photobuttons';
   const approve=document.createElement('button');approve.className='approve';approve.textContent='✅ Одобрить';approve.onclick=()=>moderateSubmission(s.id,'approved',card);
   const reject=document.createElement('button');reject.className='reject';reject.textContent='❌ Отклонить';reject.onclick=()=>moderateSubmission(s.id,'rejected',card);
