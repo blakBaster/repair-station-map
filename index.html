@@ -400,18 +400,32 @@ document.getElementById('adminLogout').onclick=async()=>{await db.auth.signOut()
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 async function loadAuditLog(){
  auditQueue.innerHTML='<div class="adminmsg">Загрузка журнала…</div>';
- const {data,error}=await db.from('audit_log').select('id,action_type,target_type,target_id,device_id,can_undo,undone,created_at').order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('audit_log').select('id,action_type,target_type,target_id,device_id,previous_state,new_state,can_undo,undone,created_at').order('created_at',{ascending:false}).limit(100);
  if(error){console.error(error);auditQueue.innerHTML='<div class="adminmsg">Не удалось загрузить журнал.</div>';return}
- setCount('aAuditCount',data?.length||0);setCount('aAuditLabel',data?.length||0,'недавних');if(!data?.length){auditQueue.innerHTML='<div class="adminmsg">Журнал пока пуст.</div>';return}
+ setCount('aAuditCount',data?.length||0);setCount('aAuditLabel',data?.length||0,'недавних');
+ if(!data?.length){auditQueue.innerHTML='<div class="adminmsg">Журнал пока пуст.</div>';return}
  const labels={photo_approved:'✅ Одобрено фото',photo_rejected:'❌ Отклонено фото',station_submission_approved:'✅ Одобрена станция',station_submission_rejected:'❌ Отклонена станция',device_banned:'🚫 Заблокировано устройство',device_unbanned:'♻️ Разблокировано устройство'};
  auditQueue.innerHTML='';
  for(const a of data){
+  const x=a.new_state||{},deviceId=a.device_id||x.device_id||null;
   const card=document.createElement('div');card.className='photocard';
+  if(x.storage_path){const {data:u}=await db.storage.from('station-photos').createSignedUrl(x.storage_path,600);if(u?.signedUrl){const img=document.createElement('img');img.src=u.signedUrl;img.alt='Фото из журнала модерации';img.style.cursor='zoom-in';img.onclick=()=>{lightboxImg.src=u.signedUrl;lightbox.classList.add('open')};card.appendChild(img)}}
   const meta=document.createElement('div');meta.className='photometa';
-  const dev=a.device_id?(a.device_id.length>18?a.device_id.slice(0,8)+'…'+a.device_id.slice(-6):a.device_id):'—';
-  meta.innerHTML='<b>'+escapeHtml(labels[a.action_type]||a.action_type)+'</b><br>Объект: '+escapeHtml(a.target_type)+' #'+escapeHtml(a.target_id||'—')+'<br>Device: '+escapeHtml(dev)+'<br>🕐 '+new Date(a.created_at).toLocaleString('ru-RU')+(a.undone?'<br>↩ Уже отменено':'');
-  card.appendChild(meta);
-  if(a.can_undo&&!a.undone){const b=document.createElement('button');b.className='adminlogout';b.style.marginTop='10px';b.textContent='↩ Откатить';b.onclick=async()=>{b.disabled=true;const {error:e}=await db.rpc('admin_undo_audit_action',{p_audit_id:a.id});if(e){console.error(e);b.disabled=false;notice('Не удалось откатить действие');return}notice('Действие отменено ↩');await Promise.all([loadAuditLog(),loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadStations()])};card.appendChild(b)}
+  let html='<b>'+escapeHtml(labels[a.action_type]||a.action_type)+'</b>';
+  if(x.station_name||x.station_id)html+='<br>🔧 '+escapeHtml(x.station_name||'Repair Station')+(x.station_id?' #'+escapeHtml(x.station_id):'');
+  if(Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lng)))html+='<br>📍 '+Number(x.lat).toFixed(6)+', '+Number(x.lng).toFixed(6);
+  if(a.target_type==='station_submission'){const eq=[];if(x.has_tools)eq.push('🛠 Инструменты');if(x.has_rack)eq.push('🚲 Стойка');if(x.has_pump)eq.push('💨 Насос');if(eq.length)html+='<br>'+escapeHtml(eq.join(' · '))}
+  html+='<br>Объект: '+escapeHtml(a.target_type)+' #'+escapeHtml(a.target_id||'—');
+  html+='<br>👤 Device ID: '+escapeHtml(deviceId||'—');
+  if(x.device_type||x.os||x.browser)html+='<br>📱 '+escapeHtml([x.device_type,x.os,x.browser].filter(Boolean).join(' · '));
+  if(x.submitted_at)html+='<br>📤 Отправлено: '+new Date(x.submitted_at).toLocaleString('ru-RU');
+  html+='<br>🕐 Модерация: '+new Date(a.created_at).toLocaleString('ru-RU')+(a.undone?'<br>↩ Уже отменено':'');
+  meta.innerHTML=html;card.appendChild(meta);
+  const buttons=document.createElement('div');buttons.className='photobuttons';
+  if(Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lng))){const m=document.createElement('button');m.className='adminlogout';m.textContent='📍 Показать на карте';m.onclick=()=>{adminModal.classList.remove('open');map.flyTo({center:[Number(x.lng),Number(x.lat)],zoom:18});const st=stations.find(z=>String(z.id)===String(x.station_id||x.approved_station_id));if(st)setTimeout(()=>openStation(st),500)};buttons.appendChild(m)}
+  if(deviceId){const {data:d}=await db.from('devices').select('is_banned').eq('device_id',deviceId).maybeSingle();const ban=document.createElement('button');ban.className=d?.is_banned?'approve':'reject';ban.textContent=d?.is_banned?'♻️ Разблокировать':'🚫 Заблокировать';ban.onclick=async()=>{ban.disabled=true;const banned=!d?.is_banned;const {error:be}=await db.rpc('admin_set_device_ban',{p_device_id:deviceId,p_banned:banned});if(be){console.error(be);ban.disabled=false;notice('Не удалось изменить блокировку');return}notice(banned?'Устройство заблокировано':'Устройство разблокировано');await Promise.all([loadAuditLog(),loadDevices()])};buttons.appendChild(ban)}
+  if(a.can_undo&&!a.undone){const b=document.createElement('button');b.className='adminlogout';b.textContent='↩ Откатить';b.onclick=async()=>{b.disabled=true;const {error:ue}=await db.rpc('admin_undo_audit_action',{p_audit_id:a.id});if(ue){console.error(ue);b.disabled=false;notice('Не удалось откатить действие');return}notice('Действие отменено ↩');await Promise.all([loadAuditLog(),loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadStations()])};buttons.appendChild(b)}
+  if(buttons.children.length)card.appendChild(buttons);
   auditQueue.appendChild(card);
  }
 }
