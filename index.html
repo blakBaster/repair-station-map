@@ -232,15 +232,31 @@ document.getElementById('alertBtn').onclick=async()=>{
 };
 const photoInput=document.getElementById('photoInput');
 document.getElementById('photoBtn').onclick=async()=>{if(!spamAllowed('photo'))return;if(!await guardDevice('photo'))return;photoInput.click()};
+async function signedPhotoUpload(file,kind,stationId=null){
+ const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,10)||'jpg';
+ const {data:permit,error:permitError}=await db.functions.invoke('create-photo-upload',{body:{device_id:DEVICE_ID,kind,station_id:stationId,extension:ext}});
+ if(permitError||!permit?.path||!permit?.token){
+  const detail=permit?.error||permitError?.context?.error||permitError?.message||'UPLOAD_PERMISSION_FAILED';
+  throw new Error('UPLOAD_PERMISSION: '+detail);
+ }
+ const {error:uploadError}=await db.storage.from('station-photos').uploadToSignedUrl(permit.path,permit.token,file,{contentType:file.type||'image/jpeg'});
+ if(uploadError)throw new Error('PHOTO_UPLOAD: '+uploadError.message);
+ return permit.path;
+}
 photoInput.onchange=async()=>{
  const file=photoInput.files&&photoInput.files[0];if(!file)return;
  if(!file.type.startsWith('image/')){notice('Выберите фотографию');photoInput.value='';return}
  if(file.size>12*1024*1024){notice('Фото слишком большое. Максимум 12 МБ');photoInput.value='';return}
  notice('Загружаем фото…');
- const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
- const path='pending/'+activeStation.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
- const {error:uploadError}=await db.storage.from('station-photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
- if(uploadError){console.error(uploadError);notice('Не удалось загрузить фото');photoInput.value='';return}
+ let path;
+ try{path=await signedPhotoUpload(file,'photo',activeStation.id)}
+ catch(e){
+  console.error(e);const msg=String(e&&e.message||e);
+  if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');
+  else if(msg.includes('RATE_LIMIT'))notice('⏳ Сработало ограничение отправки фото');
+  else notice('Не удалось загрузить фото');
+  photoInput.value='';return;
+ }
  const {error:rowError}=await db.rpc('submit_station_photo',{p_device_id:DEVICE_ID,p_station_id:activeStation.id,p_storage_path:path});
  if(rowError){
   console.error(rowError);
@@ -287,10 +303,7 @@ document.getElementById('suggestSend').onclick=async()=>{
  let uploadedPath=null;
  try{
   if(photo){
-   const ext=(photo.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-   uploadedPath='submissions/'+Date.now()+'-'+Math.random().toString(36).slice(2,10)+'.'+ext;
-   const {error:uploadError}=await db.storage.from('station-photos').upload(uploadedPath,photo,{contentType:photo.type||'image/jpeg',upsert:false});
-   if(uploadError)throw new Error('PHOTO_UPLOAD: '+uploadError.message);
+   uploadedPath=await signedPhotoUpload(photo,'station_submission');
    payload.photo_path=uploadedPath;
   }
   const {error}=await db.rpc('submit_station_submission',{p_device_id:DEVICE_ID,p_lat:payload.lat,p_lng:payload.lng,p_has_tools:payload.has_tools,p_has_rack:payload.has_rack,p_has_pump:payload.has_pump,p_photo_path:payload.photo_path});
