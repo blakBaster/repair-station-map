@@ -401,7 +401,7 @@ async function loadPendingSubmissions(){
   const eq=[s.has_tools?'🛠 Инструменты':'',s.has_rack?'🚲 Стойка':'',s.has_pump?'💨 Насос':''].filter(Boolean).join(' · ');
   meta.innerHTML='<b>Repair Station #'+s.id+'</b><br>📍 '+Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+'<br>'+eq+'<br>🕐 '+new Date(s.created_at).toLocaleString('ru-RU');
   card.appendChild(meta);
-  const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать на карте';show.onclick=()=>{adminModal.classList.remove('open');map.flyTo({center:[s.lng,s.lat],zoom:18});};card.appendChild(show);
+  const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать на карте';show.onclick=()=>{adminModal.classList.remove('open');map.flyTo({center:[s.lng,s.lat],zoom:18});notice('📍 Здесь пользователь предлагает новую Repair Station');};card.appendChild(show);
   const buttons=document.createElement('div');buttons.className='photobuttons';
   const approve=document.createElement('button');approve.className='approve';approve.textContent='✅ Одобрить';approve.onclick=()=>moderateSubmission(s.id,'approved',card);
   const reject=document.createElement('button');reject.className='reject';reject.textContent='❌ Отклонить';reject.onclick=()=>moderateSubmission(s.id,'rejected',card);
@@ -433,7 +433,15 @@ async function loadPendingPhotos(){
   const card=document.createElement('div');card.className='photocard';
   if(urlError||!signed?.signedUrl){card.innerHTML='<div class="adminmsg">Не удалось открыть фото #'+p.id+'</div>';photoQueue.appendChild(card);continue}
   const img=document.createElement('img');img.src=signed.signedUrl;img.alt='Фото на модерации';card.appendChild(img);
-  const meta=document.createElement('div');meta.className='photometa';meta.textContent='Фото #'+p.id+' · Repair Station #'+p.station_id+' · '+new Date(p.created_at).toLocaleString('ru-RU');card.appendChild(meta);
+  const station=stations.find(s=>String(s.id)===String(p.station_id));
+  const meta=document.createElement('div');meta.className='photometa';
+  meta.innerHTML='<b>Фото #'+p.id+'</b><br>🔧 Для станции: '+escapeHtml(station?.name||'Repair Station')+' #'+p.station_id+(station?' <br>📍 '+Number(station.lat).toFixed(6)+', '+Number(station.lng).toFixed(6):'')+'<br>🕐 '+new Date(p.created_at).toLocaleString('ru-RU');
+  card.appendChild(meta);
+  if(station){
+   const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать станцию на карте';
+   show.onclick=()=>{adminModal.classList.remove('open');map.flyTo({center:[station.lng,station.lat],zoom:18});setTimeout(()=>openStation(station),500)};
+   card.appendChild(show);
+  }
   const buttons=document.createElement('div');buttons.className='photobuttons';
   const approve=document.createElement('button');approve.className='approve';approve.textContent='✅ Одобрить';approve.onclick=()=>moderatePhoto(p.id,'approved',card);
   const reject=document.createElement('button');reject.className='reject';reject.textContent='❌ Отклонить';reject.onclick=()=>moderatePhoto(p.id,'rejected',card);
