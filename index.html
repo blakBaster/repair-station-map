@@ -201,6 +201,23 @@
 .panel .chip{display:inline-flex;align-items:center;gap:7px}
 .panel .chip-icon{width:15px;height:15px;display:inline-grid;place-items:center;color:#91a3b8;flex:0 0 15px}
 .panel .chip-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* Station metadata visibility tuning */
+.panel .statuspill.working{background:#22c55e18;border-color:#22c55e62;color:#7df2a5;box-shadow:inset 0 1px 0 #ffffff08,0 0 16px #22c55e12}
+.panel .statuspill.partial{background:#f59e0b16;border-color:#f59e0b58;color:#ffd166}
+.panel .statuspill.broken{background:#ef444416;border-color:#ef444458;color:#ff9292}
+.panel .statuspill.unknown{background:#94a3b810;border-color:#94a3b836;color:#d1dae6}
+.panel .statuspill.working::before{background:#2be66d;box-shadow:0 0 0 4px #22c55e20,0 0 12px #22c55ea8}
+.panel .statuspill.partial::before{box-shadow:0 0 0 4px #f59e0b1e,0 0 11px #f59e0b8a}
+.panel .statuspill.broken::before{box-shadow:0 0 0 4px #ef44441e,0 0 11px #ef44448a}
+.panel .chip-icon{color:#c1cede}
+.panel .chip-icon svg{stroke-width:1.85}
+.panel .checkedpill{color:#d0d8e4;background:#ffffff085;border-color:#ffffff14}
+.panel .checkedpill::before{border-color:#a8b5c7}
+.panel .checkedpill::after{background:#a8b5c7;box-shadow:2px 3px 0 -.25px #a8b5c7}
+.panel .alertbox{padding:10px 12px;margin:11px 0;border-radius:13px;border:1px solid #f59e0b1c;border-left:2px solid #f59e0b58;background:linear-gradient(90deg,#f59e0b08,transparent 38%)}
+.panel .alerthead{margin-bottom:4px;color:#e9b94f}
+.panel .alertdate{margin-top:4px}
 </style>
 </head>
 <body>
