@@ -574,7 +574,8 @@ const fallbackStation={id:1,name:'Repair Station',lat:52.231823780917104,lng:20.
 let stations=[], activeStation=fallbackStation, stationMarkers=[], moderationMarker=null;
 const map=new maplibregl.Map({container:'map',style:STREET_STYLE,pitch:0,bearing:0,center:[fallbackStation.lng,fallbackStation.lat],zoom:15,attributionControl:true,touchPitch:true,touchZoomRotate:true,dragRotate:true,pitchWithRotate:true});
 map.dragPan.enable();map.scrollZoom.enable();map.dragRotate.enable();map.touchZoomRotate.enable();if(map.touchPitch)map.touchPitch.enable();
-map.scrollZoom.setWheelZoomRate(1/1100);map.scrollZoom.setZoomRate(1/145);
+/* Google Maps-like wheel/trackpad response: quicker, but still controlled */
+map.scrollZoom.setWheelZoomRate(1/650);map.scrollZoom.setZoomRate(1/90);
 const CAMERA_EASE={duration:650,easing:t=>1-Math.pow(1-t,3)};
 function easeMapTo(options={}){map.easeTo({...CAMERA_EASE,...options})}
 
