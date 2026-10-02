@@ -535,7 +535,9 @@ const fallbackStation={id:1,name:'Repair Station',lat:52.231823780917104,lng:20.
 let stations=[], activeStation=fallbackStation, stationMarkers=[], moderationMarker=null;
 const map=new maplibregl.Map({container:'map',style:STREET_STYLE,pitch:0,bearing:0,center:[fallbackStation.lng,fallbackStation.lat],zoom:15,attributionControl:true,touchPitch:true,touchZoomRotate:true,dragRotate:true,pitchWithRotate:true});
 map.dragPan.enable();map.scrollZoom.enable();map.dragRotate.enable();map.touchZoomRotate.enable();if(map.touchPitch)map.touchPitch.enable();
-map.scrollZoom.setWheelZoomRate(1/900);map.scrollZoom.setZoomRate(1/120);
+map.scrollZoom.setWheelZoomRate(1/1100);map.scrollZoom.setZoomRate(1/145);
+const CAMERA_EASE={duration:650,easing:t=>1-Math.pow(1-t,3)};
+function easeMapTo(options={}){map.easeTo({...CAMERA_EASE,...options})}
 
 let satelliteMode=false;
 const satelliteBtn=document.getElementById('satellite');
@@ -892,7 +894,7 @@ document.getElementById('suggestSend').onclick=async()=>{
 
 const compass=document.getElementById('compass'),compassArrow=compass.querySelector('.compass-arrow');
 function updateCompass(){const b=map.getBearing();compassArrow.style.transform=`rotate(${-b}deg)`}
-map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=()=>map.easeTo({bearing:0,duration:350});updateCompass();
+map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=()=>easeMapTo({bearing:0,duration:420});updateCompass();
 
 function polishStreetMap(){
  if(satelliteMode)return;
@@ -909,20 +911,6 @@ function polishStreetMap(){
    }
    if(layer.type==='line'&&/road|street|motorway|trunk|primary|secondary/.test(id)){
     if(map.getPaintProperty(layer.id,'line-opacity')!==undefined)map.setPaintProperty(layer.id,'line-opacity',0.82);
-   }
-   if(layer.type==='background'){
-    if(map.getPaintProperty(layer.id,'background-color')!==undefined)map.setPaintProperty(layer.id,'background-color','#182435');
-   }
-   if(layer.type==='fill'&&/water|ocean|river|lake/.test(id)){
-    if(map.getPaintProperty(layer.id,'fill-color')!==undefined)map.setPaintProperty(layer.id,'fill-color','#10263a');
-    if(map.getPaintProperty(layer.id,'fill-opacity')!==undefined)map.setPaintProperty(layer.id,'fill-opacity',0.92);
-   }
-   if(layer.type==='fill'&&/park|grass|wood|forest|green|landcover/.test(id)){
-    if(map.getPaintProperty(layer.id,'fill-color')!==undefined)map.setPaintProperty(layer.id,'fill-color','#1a2d2b');
-    if(map.getPaintProperty(layer.id,'fill-opacity')!==undefined)map.setPaintProperty(layer.id,'fill-opacity',0.72);
-   }
-   if(layer.type==='fill'&&/landuse|residential|industrial|commercial/.test(id)&&!/park|grass|wood|forest|green/.test(id)){
-    if(map.getPaintProperty(layer.id,'fill-opacity')!==undefined)map.setPaintProperty(layer.id,'fill-opacity',0.62);
    }
   });
  }catch(e){console.warn('Map polish:',e)}
