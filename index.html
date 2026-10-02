@@ -68,6 +68,19 @@
   .suggest{top:242px}
   .camera{margin-left:0}
 }
+
+/* Compact mobile control rail */
+@media (max-width: 768px){
+  .gps,.satellite,.nearest,.myactions,.suggest{
+    position:fixed;right:12px;top:auto;width:48px;height:48px;border-radius:15px;
+  }
+  .gps{top:max(12px,env(safe-area-inset-top))}
+  .satellite{top:max(68px,calc(env(safe-area-inset-top) + 56px))}
+  .nearest{top:max(124px,calc(env(safe-area-inset-top) + 112px))}
+  .myactions{top:max(180px,calc(env(safe-area-inset-top) + 168px))}
+  .suggest{top:max(236px,calc(env(safe-area-inset-top) + 224px))}
+  .camera{margin-left:0}
+}
 </style>
 </head>
 <body>
