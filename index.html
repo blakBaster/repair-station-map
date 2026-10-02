@@ -462,6 +462,32 @@
   box-shadow:0 8px 22px #0006,0 0 8px #5a9de51b,inset 0 1px 0 #ffffff0d;
  }
 }
+
+/* Make the control rail and station markers one visual system */
+.gps,.satellite,.nearest,.myactions,.suggest,.compass{
+ background:linear-gradient(145deg,#172638,#09131f);
+ border:1.5px solid #78a9d8;
+ box-shadow:
+  0 5px 14px #0008,
+  0 0 0 1px #b9dcff18,
+  0 0 7px #65aef52e,
+  inset 0 1px 1px #d9edff20,
+  inset 0 -1px 2px #3977a81a;
+}
+.gps svg,.satellite svg,.myactions svg,.suggest svg,.compass svg{stroke:#dce7f4}
+.control-emoji-wrench{filter:none}
+@media(hover:hover){
+ .gps:hover,.satellite:hover,.nearest:hover,.myactions:hover,.suggest:hover,.compass:hover{
+  background:linear-gradient(145deg,#172638,#09131f);
+  border-color:#82b9ec;
+  box-shadow:
+   0 6px 16px #0009,
+   0 0 0 1px #c9e6ff24,
+   0 0 10px #62adf542,
+   inset 0 1px 1px #e1f1ff2b,
+   inset 0 -1px 2px #3977a824;
+ }
+}
 </style>
 </head>
 <body>
