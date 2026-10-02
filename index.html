@@ -92,7 +92,21 @@ function getDeviceId(){
  }
  return id;
 }
+function randomDeviceSecret(){
+ const bytes=new Uint8Array(32);
+ crypto.getRandomValues(bytes);
+ return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+}
+function getDeviceSecret(){
+ let secret=localStorage.getItem('repair_station_device_secret');
+ if(!secret){
+  secret=randomDeviceSecret();
+  localStorage.setItem('repair_station_device_secret',secret);
+ }
+ return secret;
+}
 const DEVICE_ID=getDeviceId();
+const DEVICE_SECRET=getDeviceSecret();
 function deviceInfo(){
  const ua=navigator.userAgent||'',platform=navigator.platform||'';
  let type=/iPhone|Android.*Mobile|Windows Phone/i.test(ua)?'Телефон':(/iPad|Tablet|Android/i.test(ua)?'Планшет':'Компьютер');
@@ -116,6 +130,19 @@ async function registerDevice(){
  const info=deviceInfo();
  const {error}=await db.from('devices').insert({device_id:DEVICE_ID,...info});
  if(error&&error.code!=='23505')console.warn('Device register:',error);
+ const {data:valid,error:verifyError}=await db.rpc('check_device_secret',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});
+ if(!verifyError&&valid===true)return true;
+ const {error:secretError}=await db.rpc('register_device_secret',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});
+ if(secretError){
+  console.warn('Device secret register:',secretError);
+  return false;
+ }
+ const {data:verified,error:finalError}=await db.rpc('check_device_secret',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});
+ if(finalError||verified!==true){
+  console.warn('Device secret verify:',finalError||'verification failed');
+  return false;
+ }
+ return true;
 }
 async function isDeviceBanned(){
  const {data,error}=await db.rpc('is_device_banned',{p_device_id:DEVICE_ID});
