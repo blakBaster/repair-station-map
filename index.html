@@ -391,6 +391,31 @@
   box-shadow:0 6px 16px #0009,0 0 13px #4d9cff4a,inset 0 1px 0 #ffffff0c;
  }
 }
+
+/* Subtle liquid-glass blue marker rim */
+.station-marker.marker-working .station-marker-pin,
+.station-marker.marker-partial .station-marker-pin,
+.station-marker.marker-broken .station-marker-pin,
+.station-marker.marker-unknown .station-marker-pin{
+ border:1.5px solid #78a9d8;
+ box-shadow:
+  0 5px 14px #0008,
+  0 0 0 1px #b9dcff18,
+  0 0 7px #65aef52e,
+  inset 0 1px 1px #d9edff20,
+  inset 0 -1px 2px #3977a81a;
+}
+@media(hover:hover){
+ .station-marker:hover .station-marker-pin{
+  border-color:#82b9ec;
+  box-shadow:
+   0 6px 16px #0009,
+   0 0 0 1px #c9e6ff24,
+   0 0 10px #62adf542,
+   inset 0 1px 1px #e1f1ff2b,
+   inset 0 -1px 2px #3977a824;
+ }
+}
 </style>
 </head>
 <body>
