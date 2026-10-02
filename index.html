@@ -81,6 +81,20 @@
   .suggest{top:max(236px,calc(env(safe-area-inset-top) + 224px))}
   .camera{margin-left:0}
 }
+
+/* Compact brand plate */
+.brand{
+  display:flex;flex-direction:column;justify-content:center;
+  min-height:48px;padding:8px 12px;border-radius:15px;
+  font-size:15px;line-height:1.15;font-weight:800;letter-spacing:-.2px;
+  background:rgba(12,19,29,.86);border:1px solid #ffffff0d;
+  box-shadow:0 7px 24px #00000038;
+}
+.brand small{font-size:10px;line-height:1.2;font-weight:550;opacity:.52;margin-top:3px;letter-spacing:0}
+@media(max-width:768px){
+  .brand{min-height:48px;padding:8px 11px;font-size:14px;border-radius:15px}
+  .brand small{font-size:10px}
+}
 </style>
 </head>
 <body>
