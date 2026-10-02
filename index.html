@@ -4,6 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#111827" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Repair Station" />
 <title>Repair Station Map v1.0</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" />
 <style>
@@ -701,5 +705,10 @@ map.on('click',e=>{
  if(moderationMarker)closeMapPoint();
 });
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
+</script>
+<script>
+if('serviceWorker' in navigator){
+ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('Service worker:',e)));
+}
 </script>
 </body></html>
