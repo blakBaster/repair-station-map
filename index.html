@@ -893,7 +893,13 @@ const compass=document.getElementById('compass'),compassArrow=compass.querySelec
 function updateCompass(){const b=map.getBearing();compassArrow.style.transform=`rotate(${-b}deg)`}
 map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=()=>map.easeTo({bearing:0,duration:350});updateCompass();
 
-map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{'fill-extrusion-color':'#33465a','fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],'fill-extrusion-opacity':0.72}})}catch(e){console.warn('3D buildings:',e)}});
+map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{
+ 'fill-extrusion-color':['interpolate',['linear'],['zoom'],14,'#2b3b4d',16,'#354b62',18,'#3c5670'],
+ 'fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],
+ 'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
+ 'fill-extrusion-opacity':['interpolate',['linear'],['zoom'],14,0.58,16,0.7,18,0.78],
+ 'fill-extrusion-vertical-gradient':true
+}})}catch(e){console.warn('3D buildings:',e)}});
 
 function setCount(id,n,label=''){const e=document.getElementById(id);if(e)e.textContent=n===undefined?'':'('+n+(label?' '+label:'')+')'}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-admin-tab]');if(a){document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active',x===a));document.querySelectorAll('[data-admin-pane]').forEach(x=>x.classList.toggle('active',x.dataset.adminPane===a.dataset.adminTab))}const u=e.target.closest('[data-user-tab]');if(u){document.querySelectorAll('[data-user-tab]').forEach(x=>x.classList.toggle('active',x===u));renderMyActions(u.dataset.userTab)}});
