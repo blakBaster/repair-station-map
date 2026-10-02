@@ -910,6 +910,20 @@ function polishStreetMap(){
    if(layer.type==='line'&&/road|street|motorway|trunk|primary|secondary/.test(id)){
     if(map.getPaintProperty(layer.id,'line-opacity')!==undefined)map.setPaintProperty(layer.id,'line-opacity',0.82);
    }
+   if(layer.type==='background'){
+    if(map.getPaintProperty(layer.id,'background-color')!==undefined)map.setPaintProperty(layer.id,'background-color','#182435');
+   }
+   if(layer.type==='fill'&&/water|ocean|river|lake/.test(id)){
+    if(map.getPaintProperty(layer.id,'fill-color')!==undefined)map.setPaintProperty(layer.id,'fill-color','#10263a');
+    if(map.getPaintProperty(layer.id,'fill-opacity')!==undefined)map.setPaintProperty(layer.id,'fill-opacity',0.92);
+   }
+   if(layer.type==='fill'&&/park|grass|wood|forest|green|landcover/.test(id)){
+    if(map.getPaintProperty(layer.id,'fill-color')!==undefined)map.setPaintProperty(layer.id,'fill-color','#1a2d2b');
+    if(map.getPaintProperty(layer.id,'fill-opacity')!==undefined)map.setPaintProperty(layer.id,'fill-opacity',0.72);
+   }
+   if(layer.type==='fill'&&/landuse|residential|industrial|commercial/.test(id)&&!/park|grass|wood|forest|green/.test(id)){
+    if(map.getPaintProperty(layer.id,'fill-opacity')!==undefined)map.setPaintProperty(layer.id,'fill-opacity',0.62);
+   }
   });
  }catch(e){console.warn('Map polish:',e)}
 }
