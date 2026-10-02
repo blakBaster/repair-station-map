@@ -187,6 +187,20 @@
  .station-secondary-actions{gap:7px}
  .station-secondary-actions .alertbtn{min-height:52px;padding:9px 8px;font-size:12px}
 }
+
+/* Unified station metadata icon system */
+.panel .statuspill{position:relative;padding-left:22px}
+.panel .statuspill::before{content:"";position:absolute;left:9px;top:50%;width:7px;height:7px;border-radius:50%;transform:translateY(-50%)}
+.panel .statuspill.working::before{background:#22c55e;box-shadow:0 0 0 3px #22c55e18,0 0 9px #22c55e75}
+.panel .statuspill.partial::before{background:#f59e0b;box-shadow:0 0 0 3px #f59e0b18,0 0 9px #f59e0b65}
+.panel .statuspill.broken::before{background:#ef4444;box-shadow:0 0 0 3px #ef444418,0 0 9px #ef444465}
+.panel .statuspill.unknown::before{background:#94a3b8;box-shadow:0 0 0 3px #94a3b814}
+.panel .checkedpill{position:relative;padding-left:27px;color:#b8c3d1;background:#ffffff06;border-color:#ffffff0e;font-weight:650}
+.panel .checkedpill::before{content:"";position:absolute;left:9px;top:50%;width:10px;height:10px;border:1.5px solid #7f8da0;border-radius:50%;transform:translateY(-50%);opacity:.9}
+.panel .checkedpill::after{content:"";position:absolute;left:13.5px;top:50%;width:1.5px;height:3.5px;background:#7f8da0;transform:translateY(-82%);box-shadow:2px 3px 0 -.25px #7f8da0}
+.panel .chip{display:inline-flex;align-items:center;gap:7px}
+.panel .chip-icon{width:15px;height:15px;display:inline-grid;place-items:center;color:#91a3b8;flex:0 0 15px}
+.panel .chip-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 </style>
 </head>
 <body>
@@ -350,8 +364,13 @@ function normalizeStation(s){
  if(!Array.isArray(equipment))equipment=fallbackStation.equipment;
  return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,status:s.status||'unknown',lastChecked:s.last_checked??s.lastChecked??null};
 }
-function equipmentIcon(t){const x=t.toLowerCase();return x.includes('насос')?'💨':x.includes('стой')?'🚲':'🛠'}
-function statusInfo(v){const s=String(v||'unknown').toLowerCase();if(['working','works','ok','active'].includes(s))return ['working','🟢 Работает'];if(['partial','partially_working','partly'].includes(s))return ['partial','🟡 Частично работает'];if(['broken','not_working','inactive','down'].includes(s))return ['broken','🔴 Не работает'];return ['unknown','⚪ Статус неизвестен']}
+function equipmentIcon(t){
+ const x=t.toLowerCase();
+ if(x.includes('насос'))return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 20V8h7v12M7 20h9M9 8V5h5v3M15 11h2.5a2.5 2.5 0 0 1 2.5 2.5V17M18 17h3"/></svg>';
+ if(x.includes('стой'))return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-7 3 7m-3-7h5l3 7M9 7h3"/></svg>';
+ return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5-5l2.2 2.2-3 3-2.2-2.2a4 4 0 0 0 5 5L19 17l-2 2-7.5-7.5"/><path d="M5 19l4-4"/></svg>';
+}
+function statusInfo(v){const s=String(v||'unknown').toLowerCase();if(['working','works','ok','active'].includes(s))return ['working','Работает'];if(['partial','partially_working','partly'].includes(s))return ['partial','Частично работает'];if(['broken','not_working','inactive','down'].includes(s))return ['broken','Не работает'];return ['unknown','Статус неизвестен']}
 function checkedText(v){if(!v)return 'Проверка не указана';const d=new Date(v);return Number.isNaN(d.getTime())?'Проверка не указана':'Проверено: '+d.toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 async function loadAlert(stationId){
  try{
@@ -417,7 +436,7 @@ function renderStation(s){
  stationDistance.textContent=currentUserLngLat?('📍 '+formatDistance(distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng))+' от вас'):'';
  const [statusClass,statusLabel]=statusInfo(s.status);stationStatus.className='statuspill '+statusClass;stationStatus.textContent=statusLabel;lastChecked.textContent=checkedText(s.lastChecked);
  stationTools.innerHTML='';
- s.equipment.forEach(t=>{const e=document.createElement('span');e.className='chip';e.textContent=`${equipmentIcon(String(t))} ${t}`;stationTools.appendChild(e)});
+ s.equipment.forEach(t=>{const e=document.createElement('span');e.className='chip';e.innerHTML='<span class="chip-icon">'+equipmentIcon(String(t))+'</span><span>'+escapeHtml(String(t))+'</span>';stationTools.appendChild(e)});
  alertText.textContent='Загрузка…';alertDate.textContent='';
  panel.classList.add('open');panel.scrollTop=0;focusStationForCard(s);loadAlert(s.id);loadApprovedPhotos(s.id);
 }
