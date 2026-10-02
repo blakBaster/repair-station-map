@@ -528,14 +528,9 @@
 .user-location-marker{width:28px;height:28px}
 .user-location-marker::before{width:42px;height:42px}
 .user-location-dot{width:18px;height:18px;border-width:3px}
-.station-marker{transition:transform .18s ease,filter .18s ease}
-.station-marker.active{transform:scale(1.16);filter:drop-shadow(0 0 8px rgba(105,174,240,.32))}
-.station-distance-badge{
- position:absolute;left:50%;top:46px;transform:translateX(-50%);white-space:nowrap;
- padding:3px 7px;border-radius:9px;background:rgba(9,19,31,.9);border:1px solid #ffffff14;
- color:#dce7f4;font:700 10px/1.2 system-ui,-apple-system,sans-serif;box-shadow:0 3px 10px #0006;
- pointer-events:none;
-}
+.station-marker{transition:none}
+
+
 #map.map-loading::after{
  content:"";position:absolute;inset:0;z-index:8;pointer-events:none;
  background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.035) 50%,transparent 65%);
@@ -543,9 +538,8 @@
 }
 @keyframes mapLoadingSweep{to{background-position:-220% 0}}
 @media(max-width:768px){
- button,.station-marker{transition:transform .12s ease,filter .12s ease}
+ button{transition:transform .12s ease,filter .12s ease}
  button:active{transform:scale(.94)}
- .station-marker:active{transform:scale(1.08)}
 }
 </style>
 </head>
@@ -782,15 +776,7 @@ function setActiveStationMarker(id){
  stationMarkers.forEach(m=>m.getElement().classList.toggle('active',String(m.getElement().dataset.stationId)===String(id)));
 }
 function clearActiveStationMarker(){stationMarkers.forEach(m=>m.getElement().classList.remove('active'))}
-function refreshStationDistances(){
- if(!currentUserLngLat)return;
- stationMarkers.forEach(m=>{
-  const el=m.getElement(),s=stations.find(x=>String(x.id)===String(el.dataset.stationId));if(!s)return;
-  let badge=el.querySelector('.station-distance-badge');
-  if(!badge){badge=document.createElement('span');badge.className='station-distance-badge';el.appendChild(badge)}
-  badge.textContent=formatDistance(distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng));
- });
-}
+function refreshStationDistances(){}
 function renderStation(s){
  activeStation=s;setActiveStationMarker(s.id);
  stationTitle.textContent=s.name==='Repair Station #001'?'Repair Station':s.name;
@@ -811,7 +797,6 @@ function addMarker(s){
  el.addEventListener('click',openStation);
  el.addEventListener('touchend',openStation,{passive:false});
  stationMarkers.push(marker);
- if(currentUserLngLat)refreshStationDistances();
 }
 async function loadStations(){
  try{
