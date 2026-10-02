@@ -794,7 +794,7 @@ function renderStation(s){
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
- const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">🔧</span></span>';el.title=s.name;
+ const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;const markerIcon=s.has_pump&&!s.has_tools&&!s.has_rack?'💨':'🔧';el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">'+markerIcon+'</span></span>';el.title=s.name;
  const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
