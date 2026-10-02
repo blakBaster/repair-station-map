@@ -731,9 +731,9 @@ function focusStationForCard(s){
  if(desktop){
   // Shift the map center left so the station itself appears centered in the free area to the right of the card.
   const cardWidth=Math.min(500,window.innerWidth-36);
-  map.flyTo({center:[s.lng,s.lat],zoom,padding:{left:cardWidth+36,right:18,top:18,bottom:18},duration:650});
+  map.flyTo({center:[s.lng,s.lat],zoom,padding:{left:cardWidth+36,right:18,top:18,bottom:18},duration:780,curve:1.15,speed:1.25,essential:true});
  }else{
-  map.flyTo({center:[s.lng,s.lat],zoom:Math.max(map.getZoom(),16.5),duration:550});
+  map.flyTo({center:[s.lng,s.lat],zoom:Math.max(map.getZoom(),16.5),duration:680,curve:1.12,speed:1.25,essential:true});
  }
 }
 function renderStation(s){
@@ -845,16 +845,16 @@ function showMapPoint(lat,lng,title='Отмеченное место',stationId=
 }
 document.getElementById('mapPeekClose').onclick=()=>{closeMapPoint();if(panel.classList.contains('open'))panel.classList.remove('open');notice('Просмотр места закрыт')};
 
-function setUserLocation(p,fly=true){const ll=[p.coords.longitude,p.coords.latitude];currentUserLngLat=ll;if(userMarker)userMarker.remove();const u=document.createElement('div');u.style.cssText='width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 2px 10px #0006';userMarker=new maplibregl.Marker({element:u}).setLngLat(ll).addTo(map);if(fly)map.flyTo({center:ll,zoom:16});return ll}
+function setUserLocation(p,fly=true){const ll=[p.coords.longitude,p.coords.latitude];currentUserLngLat=ll;if(userMarker)userMarker.remove();const u=document.createElement('div');u.style.cssText='width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 2px 10px #0006';userMarker=new maplibregl.Marker({element:u}).setLngLat(ll).addTo(map);if(fly)map.flyTo({center:ll,zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true});return ll}
 function getLocation(cb){if(!navigator.geolocation){notice('Геолокация не поддерживается');return}navigator.geolocation.getCurrentPosition(p=>{setUserLocation(p,false);cb(p)},()=>notice('Не удалось получить геолокацию. Разрешите доступ к местоположению.'),{enableHighAccuracy:true,timeout:10000,maximumAge:10000})}
-document.getElementById('gps').onclick=()=>getLocation(p=>map.flyTo({center:[p.coords.longitude,p.coords.latitude],zoom:16}));
+document.getElementById('gps').onclick=()=>getLocation(p=>map.flyTo({center:[p.coords.longitude,p.coords.latitude],zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true}));
 document.getElementById('nearest').onclick=()=>{
  const go=()=>{
   if(!stations.length){notice('Станции пока не загружены');return}
   let best=null,bestD=Infinity;
   for(const s of stations){const d=distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng);if(d<bestD){bestD=d;best=s}}
   if(!best)return;
-  map.flyTo({center:[best.lng,best.lat],zoom:16});renderStation(best);notice('Ближайшая станция: '+formatDistance(bestD));
+  renderStation(best);notice('Ближайшая станция: '+formatDistance(bestD));
  };
  if(currentUserLngLat)go();else getLocation(()=>go());
 };
