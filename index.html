@@ -523,10 +523,34 @@
  70%,100%{transform:scale(1.35);opacity:0}
 }
 @media (prefers-reduced-motion:reduce){.user-location-marker::before{animation:none;opacity:.45}}
+
+/* Map interaction polish */
+.user-location-marker{width:28px;height:28px}
+.user-location-marker::before{width:42px;height:42px}
+.user-location-dot{width:18px;height:18px;border-width:3px}
+.station-marker{transition:transform .18s ease,filter .18s ease}
+.station-marker.active{transform:scale(1.16);filter:drop-shadow(0 0 8px rgba(105,174,240,.32))}
+.station-distance-badge{
+ position:absolute;left:50%;top:46px;transform:translateX(-50%);white-space:nowrap;
+ padding:3px 7px;border-radius:9px;background:rgba(9,19,31,.9);border:1px solid #ffffff14;
+ color:#dce7f4;font:700 10px/1.2 system-ui,-apple-system,sans-serif;box-shadow:0 3px 10px #0006;
+ pointer-events:none;
+}
+#map.map-loading::after{
+ content:"";position:absolute;inset:0;z-index:8;pointer-events:none;
+ background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.035) 50%,transparent 65%);
+ background-size:220% 100%;animation:mapLoadingSweep 1.25s linear infinite;
+}
+@keyframes mapLoadingSweep{to{background-position:-220% 0}}
+@media(max-width:768px){
+ button,.station-marker{transition:transform .12s ease,filter .12s ease}
+ button:active{transform:scale(.94)}
+ .station-marker:active{transform:scale(1.08)}
+}
 </style>
 </head>
 <body>
-<div id="map"></div>
+<div id="map" class="map-loading"></div>
 <div class="top"><div class="brand" id="brand"><img class="brand-logo" src="./icons/repair-station-r4.svg" alt=""><span class="brand-copy"><span class="brand-title">Repair Station Map</span><small>Велоремонтные точки</small></span></div><div class="camera"><button class="gps" id="gps" aria-label="Моё местоположение"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div></div><button class="nearest" id="nearest" aria-label="Ближайшая станция" title="Ближайшая станция"><span class="control-emoji-wrench">🔧</span></button><button class="satellite" id="satellite" aria-label="Спутниковая карта" title="Спутниковая карта"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5l10 10-3 3-10-10z"/><path d="M6 3l3 3M18 15l3 3M5 13a8 8 0 0 0 6 6M3 16a10.5 10.5 0 0 0 5 5"/><path d="M14 4l6 6-3 3-6-6z"/></svg></button><button class="myactions" id="myActions" aria-label="Мои действия" title="Мои действия"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l-3 2"/><path d="M4.5 5.5H8V9"/></svg></button><button class="suggest" id="suggest" aria-label="Предложить Repair Station" title="Предложить Repair Station"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button class="mappeekclose" id="mapPeekClose">✕ Закрыть просмотр</button><div class="pickpin" id="pickPin">📍</div><div class="suggestbox" id="suggestBox"><h3>＋ Предложить Repair Station</h3><p>Передвиньте карту так, чтобы 📍 оказался точно на станции.</p><div class="suggesttools"><label><input type="checkbox" id="sTools" checked> 🛠 Инструменты</label><label><input type="checkbox" id="sRack" checked> 🚲 Стойка</label><label><input type="checkbox" id="sPump" checked> 💨 Насос</label></div><div class="suggestphoto"><label for="suggestPhoto">📷 Добавить фото <span style="opacity:.55;font-weight:600">(желательно)</span></label><input id="suggestPhoto" type="file" accept="image/*"><img id="suggestPreview" class="suggestpreview" alt="Предпросмотр фотографии"></div><div class="suggestactions"><button class="suggestcancel" id="suggestCancel">Отмена</button><button class="suggestsend" id="suggestSend">Отправить</button></div></div><button class="compass" id="compass" aria-label="Вернуть север наверх" title="Север"><span class="compass-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z"/></svg></span></button>
 <div class="notice" id="notice"></div><div class="name-modal" id="nameModal"><div class="name-card"><h3>Как тебя называть?</h3><p>Выбери имя или псевдоним для Repair Station. Его потом можно изменить в «Мои действия».</p><input id="nameInput" maxlength="30" autocomplete="nickname" placeholder="Например, Max"><div class="name-actions"><button class="name-skip" id="nameSkip">Пропустить</button><button class="name-save" id="nameSave">Продолжить</button></div></div></div><div class="audit-clear-modal" id="auditClearModal"><div class="audit-clear-card"><h3>🧹 Очистить журнал</h3><p>Удалятся только записи админского аудита. Устройства, пользовательская история, станции, фото и сообщения не затрагиваются. Удалённые записи аудита больше нельзя будет откатить.</p><div class="audit-clear-options"><button data-days="7">Старше 7 дней</button><button data-days="30">Старше 30 дней</button><button data-days="90">Старше 90 дней</button><button class="danger" data-days="0">Очистить весь журнал</button></div><button class="audit-clear-cancel" id="auditClearCancel">Отмена</button></div></div><div class="photo-delete-modal" id="photoDeleteModal"><div class="photo-delete-card"><button class="photo-delete-x" id="photoDeleteX">✕</button><div class="photo-delete-head"><div class="photo-delete-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6.5 7l1 13h9l1-13"/><path d="M10 11v5M14 11v5"/></svg></div><div class="photo-delete-copy"><h3>Удалить фото?</h3><p>Фото будет скрыто с публичной станции.<br>Его можно будет восстановить через журнал.</p></div></div><div class="photo-delete-actions"><button class="photo-delete-cancel" id="photoDeleteCancel">Отмена</button><button class="photo-delete-confirm" id="photoDeleteConfirm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6.5 7l1 13h9l1-13"/><path d="M10 11v5M14 11v5"/></svg><span>Удалить фото</span></button></div></div></div>
 <button class="adminopen" id="adminOpen">🔐 Админ</button><div class="lightbox" id="lightbox"><button class="lightbox-admin-delete" id="lightboxAdminDelete" aria-label="Удалить фото"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6.5 7l1 13h9l1-13"/><path d="M10 11v5M14 11v5"/></svg></button><div class="lightbox-delete-label">Удалить фото</div><button class="lightboxclose" id="lightboxClose">✕</button><img id="lightboxImg" alt="Фото Repair Station"></div>
@@ -754,8 +778,21 @@ function focusStationForCard(s){
   map.flyTo({center:[s.lng,s.lat],zoom:Math.max(map.getZoom(),16.5),duration:680,curve:1.12,speed:1.25,essential:true});
  }
 }
+function setActiveStationMarker(id){
+ stationMarkers.forEach(m=>m.getElement().classList.toggle('active',String(m.getElement().dataset.stationId)===String(id)));
+}
+function clearActiveStationMarker(){stationMarkers.forEach(m=>m.getElement().classList.remove('active'))}
+function refreshStationDistances(){
+ if(!currentUserLngLat)return;
+ stationMarkers.forEach(m=>{
+  const el=m.getElement(),s=stations.find(x=>String(x.id)===String(el.dataset.stationId));if(!s)return;
+  let badge=el.querySelector('.station-distance-badge');
+  if(!badge){badge=document.createElement('span');badge.className='station-distance-badge';el.appendChild(badge)}
+  badge.textContent=formatDistance(distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng));
+ });
+}
 function renderStation(s){
- activeStation=s;
+ activeStation=s;setActiveStationMarker(s.id);
  stationTitle.textContent=s.name==='Repair Station #001'?'Repair Station':s.name;
  stationCoords.textContent=`${s.lat}, ${s.lng}`;
  stationDistance.textContent=currentUserLngLat?('📍 '+formatDistance(distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng))+' от вас'):'';
@@ -767,13 +804,14 @@ function renderStation(s){
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
- const el=document.createElement('div');el.className='station-marker';el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">🔧</span></span>';el.title=s.name;
+ const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">🔧</span></span>';el.title=s.name;
  const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
  el.addEventListener('click',openStation);
  el.addEventListener('touchend',openStation,{passive:false});
  stationMarkers.push(marker);
+ if(currentUserLngLat)refreshStationDistances();
 }
 async function loadStations(){
  try{
@@ -784,7 +822,7 @@ async function loadStations(){
  }catch(e){
   console.warn('Stations fallback:',e);stations=[fallbackStation];
  }
- stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);
+ stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);document.getElementById('map').classList.remove('map-loading');
 }
 document.getElementById('alertBtn').onclick=async()=>{
  if(!spamAllowed('report'))return;
@@ -845,10 +883,10 @@ photoInput.onchange=async()=>{
  }
  markSpamAction('photo');photoInput.value='';notice('Фото отправлено на модерацию ✓');
 };
-document.getElementById('close').onclick=()=>panel.classList.remove('open');
+document.getElementById('close').onclick=()=>{panel.classList.remove('open');clearActiveStationMarker()};
 document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
 
-let userMarker=null,currentUserLngLat=null;
+let userMarker=null,currentUserLngLat=null,locationWatchId=null;
 function distanceMeters(lat1,lng1,lat2,lng2){const R=6371000,toRad=x=>x*Math.PI/180;const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(a))}
 function formatDistance(m){return m<1000?Math.round(m)+' м':(m/1000).toFixed(m<10000?1:0).replace('.',',')+' км'}
 function closeMapPoint(){if(moderationMarker){moderationMarker.remove();moderationMarker=null}document.getElementById('mapPeekClose')?.classList.remove('show')}
@@ -863,18 +901,19 @@ function showMapPoint(lat,lng,title='Отмеченное место',stationId=
 }
 document.getElementById('mapPeekClose').onclick=()=>{closeMapPoint();if(panel.classList.contains('open'))panel.classList.remove('open');notice('Просмотр места закрыт')};
 
-function setUserLocation(p,fly=true){const ll=[p.coords.longitude,p.coords.latitude];currentUserLngLat=ll;if(userMarker)userMarker.remove();const u=document.createElement('div');u.className='user-location-marker';u.innerHTML='<span class="user-location-dot"></span>';userMarker=new maplibregl.Marker({element:u}).setLngLat(ll).addTo(map);if(fly)map.flyTo({center:ll,zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true});return ll}
+function setUserLocation(p,fly=true){const ll=[p.coords.longitude,p.coords.latitude];currentUserLngLat=ll;if(userMarker)userMarker.setLngLat(ll);else{const u=document.createElement('div');u.className='user-location-marker';u.innerHTML='<span class="user-location-dot"></span>';userMarker=new maplibregl.Marker({element:u}).setLngLat(ll).addTo(map)}refreshStationDistances();if(activeStation)stationDistance.textContent='📍 '+formatDistance(distanceMeters(ll[1],ll[0],activeStation.lat,activeStation.lng))+' от вас';if(fly)map.flyTo({center:ll,zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true});return ll}
+function ensureLocationTracking(){if(locationWatchId!==null||!navigator.geolocation)return;locationWatchId=navigator.geolocation.watchPosition(p=>setUserLocation(p,false),()=>{}, {enableHighAccuracy:true,maximumAge:5000,timeout:15000})}
 function getLocation(cb){if(!navigator.geolocation){notice('Геолокация не поддерживается');return}navigator.geolocation.getCurrentPosition(p=>{setUserLocation(p,false);cb(p)},()=>notice('Не удалось получить геолокацию. Разрешите доступ к местоположению.'),{enableHighAccuracy:true,timeout:10000,maximumAge:10000})}
-document.getElementById('gps').onclick=()=>getLocation(p=>map.flyTo({center:[p.coords.longitude,p.coords.latitude],zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true}));
+document.getElementById('gps').onclick=()=>getLocation(p=>{ensureLocationTracking();map.flyTo({center:[p.coords.longitude,p.coords.latitude],zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true})});
 document.getElementById('nearest').onclick=()=>{
  const go=()=>{
   if(!stations.length){notice('Станции пока не загружены');return}
   let best=null,bestD=Infinity;
   for(const s of stations){const d=distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng);if(d<bestD){bestD=d;best=s}}
   if(!best)return;
-  renderStation(best);notice('Ближайшая станция: '+formatDistance(bestD));
+  renderStation(best);stationDistance.textContent='📍 Ближайшая • '+formatDistance(bestD)+' от вас';notice('Ближайшая станция: '+formatDistance(bestD));
  };
- if(currentUserLngLat)go();else getLocation(()=>go());
+ if(currentUserLngLat){ensureLocationTracking();go()}else getLocation(()=>{ensureLocationTracking();go()});
 };
 const suggestBox=document.getElementById('suggestBox'),pickPin=document.getElementById('pickPin');
 let suggesting=false;
@@ -1213,7 +1252,7 @@ async function moderatePhoto(id,status,card){
 map.on('click',e=>{
  if(Date.now()<ignoreMapClickUntil)return;
  if(e?.originalEvent?.target?.closest?.('.station-marker'))return;
- if(panel.classList.contains('open'))panel.classList.remove('open');
+ if(panel.classList.contains('open')){panel.classList.remove('open');clearActiveStationMarker()}
  if(moderationMarker)closeMapPoint();
 });
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
