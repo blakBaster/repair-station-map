@@ -935,10 +935,15 @@ document.getElementById('suggestSend').onclick=async()=>{
    uploadedPath=await signedPhotoUpload(photo,'station_submission');
    payload.photo_path=uploadedPath;
   }
-  const {error}=await db.rpc('submit_station_submission',{p_device_id:DEVICE_ID,p_lat:payload.lat,p_lng:payload.lng,p_has_tools:payload.has_tools,p_has_rack:payload.has_rack,p_has_pump:payload.has_pump,p_photo_path:payload.photo_path});
-  if(error)throw new Error('SUBMISSION_INSERT: '+error.message);
+  let error;
+  if(adminBypass){
+   ({error}=await db.rpc('admin_create_station',{p_lat:payload.lat,p_lng:payload.lng,p_has_tools:payload.has_tools,p_has_rack:payload.has_rack,p_has_pump:payload.has_pump}));
+  }else{
+   ({error}=await db.rpc('submit_station_submission',{p_device_id:DEVICE_ID,p_lat:payload.lat,p_lng:payload.lng,p_has_tools:payload.has_tools,p_has_rack:payload.has_rack,p_has_pump:payload.has_pump,p_photo_path:payload.photo_path}));
+  }
+  if(error)throw new Error((adminBypass?'ADMIN_STATION_CREATE: ':'SUBMISSION_INSERT: ')+error.message);
   localStorage.removeItem('pending_station_suggestion');suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src');
-  markSpamAction('station');notice('Спасибо! Repair Station отправлена на модерацию ✓');
+  if(adminBypass){notice('Repair Station сразу добавлена на карту ✓');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()])}else{markSpamAction('station');notice('Спасибо! Repair Station отправлена на модерацию ✓')}
  }catch(e){
   console.error(e);
   const msg=String(e&&e.message||e);
