@@ -488,6 +488,23 @@
    inset 0 -1px 2px #3977a824;
  }
 }
+
+/* Controls: quiet shells, consistent inner icon language */
+.gps,.satellite,.nearest,.myactions,.suggest,.compass{
+ border:1px solid #ffffff0b;
+ background:linear-gradient(180deg,rgba(18,29,44,.94),rgba(10,18,29,.94));
+ box-shadow:0 7px 20px #00000052,inset 0 1px 0 #ffffff08;
+}
+.gps svg,.satellite svg,.myactions svg,.suggest svg,.compass svg{
+ width:22px;height:22px;stroke:#d7e2ef;stroke-width:1.7;
+}
+.control-emoji-wrench{font-size:21px;filter:none}
+@media(hover:hover){
+ .gps:hover,.satellite:hover,.nearest:hover,.myactions:hover,.suggest:hover,.compass:hover{
+  border-color:#ffffff12;background:linear-gradient(180deg,rgba(23,37,55,.96),rgba(13,23,36,.96));
+  box-shadow:0 8px 22px #0006,inset 0 1px 0 #ffffff0c;
+ }
+}
 </style>
 </head>
 <body>
