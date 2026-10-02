@@ -242,6 +242,28 @@
 .panel .alerthead{font-size:11px;margin-bottom:3px}
 .panel .alerttext{font-size:13px;line-height:1.3}
 .panel .alertdate{font-size:10.5px;margin-top:3px}
+
+/* R.4 map station markers */
+.station-marker{
+ width:44px;height:44px;border:0;background:transparent;border-radius:50%;padding:0;
+ display:grid;place-items:center;box-shadow:none;cursor:pointer;overflow:visible;
+}
+.station-marker::before{
+ content:"";position:absolute;width:44px;height:44px;border-radius:50%;
+ background:#08111de8;border:2px solid #d8e4f2;
+ box-shadow:0 5px 16px #0008,0 0 0 3px #07101a66;
+ transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.station-marker-core{
+ position:relative;z-index:1;width:31px;height:31px;border-radius:10px;overflow:hidden;
+ display:block;box-shadow:0 2px 8px #0007;
+}
+.station-marker-core img{display:block;width:100%;height:100%;object-fit:cover}
+@media(hover:hover){
+ .station-marker:hover::before{transform:scale(1.08);border-color:#eef6ff;box-shadow:0 7px 20px #0009,0 0 0 4px #3b82f624}
+ .station-marker:hover .station-marker-core{transform:scale(1.04)}
+}
+.station-marker:active::before{transform:scale(.94)}
 </style>
 </head>
 <body>
@@ -483,7 +505,7 @@ function renderStation(s){
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
- const el=document.createElement('div');el.className='station-marker';el.textContent='🔧';el.title=s.name;
+ const el=document.createElement('div');el.className='station-marker';el.innerHTML='<span class="station-marker-core"><img src="./icons/repair-station-r4.svg" alt=""></span>';el.title=s.name;
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
  el.addEventListener('click',openStation);
