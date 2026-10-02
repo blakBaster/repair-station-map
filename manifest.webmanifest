@@ -8,5 +8,19 @@
   "background_color": "#111827",
   "theme_color": "#111827",
   "lang": "ru",
-  "orientation": "any"
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icons/repair-station-r4.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/repair-station-r4.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
 }
