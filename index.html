@@ -55,6 +55,19 @@
 .gps:active,.nearest:active,.satellite:active,.myactions:active,.suggest:active{transform:scale(.94);background:rgba(27,39,56,.94)}
 .satellite.active{background:rgba(37,99,235,.82);border-color:#60a5fa45}
 @media (hover:hover){.gps:hover,.nearest:hover,.satellite:hover,.myactions:hover,.suggest:hover{background:rgba(27,39,56,.94);border-color:#ffffff18}}
+
+/* Compact desktop control rail */
+@media (min-width: 769px){
+  .gps,.satellite,.nearest,.myactions,.suggest{
+    position:fixed;right:14px;top:auto;width:48px;height:48px;border-radius:15px;
+  }
+  .gps{top:18px}
+  .satellite{top:74px}
+  .nearest{top:130px}
+  .myactions{top:186px}
+  .suggest{top:242px}
+  .camera{margin-left:0}
+}
 </style>
 </head>
 <body>
