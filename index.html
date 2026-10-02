@@ -359,6 +359,19 @@
  .station-marker:hover .station-marker-tip{opacity:1;transform:translate(-50%,0)}
 }
 .station-marker:active .station-marker-pin{transform:scale(.95)}
+
+/* Status lives in the marker shell — no dot or hover tooltip */
+.station-marker-status,.station-marker-tip{display:none!important}
+.station-marker.marker-working .station-marker-pin{border-color:#35d86f}
+.station-marker.marker-partial .station-marker-pin{border-color:#f3b82f}
+.station-marker.marker-broken .station-marker-pin{border-color:#ff5252}
+.station-marker.marker-unknown .station-marker-pin{border-color:#a7b6c9}
+@media(hover:hover){
+ .station-marker:hover .station-marker-pin{
+  transform:scale(1.08);border-color:#68aefc;
+  box-shadow:0 6px 16px #0009,0 0 0 3px #3b82f62b,inset 0 1px 0 #ffffff14;
+ }
+}
 </style>
 </head>
 <body>
@@ -600,7 +613,7 @@ function renderStation(s){
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
- const el=document.createElement('div');el.className='station-marker';el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5-5l2.2 2.2-3 3-2.2-2.2a4 4 0 0 0 5 5L19 17l-2 2-7.5-7.5"/><path d="M5 19l4-4"/></svg></span><span class="station-marker-status"></span></span><span class="station-marker-tip"><b>'+escapeHtml(s.name)+'</b><span>'+escapeHtml(statusInfo(s.status)[1])+'</span></span>';el.title='';
+ const el=document.createElement('div');el.className='station-marker';el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5-5l2.2 2.2-3 3-2.2-2.2a4 4 0 0 0 5 5L19 17l-2 2-7.5-7.5"/><path d="M5 19l4-4"/></svg></span></span>';el.title=s.name;
  const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
