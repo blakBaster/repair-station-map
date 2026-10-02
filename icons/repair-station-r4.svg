@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#172231"/><stop offset="1" stop-color="#060b12"/></linearGradient>
+ <linearGradient id="r" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6f7e8e"/><stop offset="1" stop-color="#344251"/></linearGradient>
+ <linearGradient id="a" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#19c9ff"/><stop offset=".55" stop-color="#078dff"/><stop offset="1" stop-color="#075cff"/></linearGradient>
+ <filter id="s"><feDropShadow dx="0" dy="8" stdDeviation="9" flood-opacity=".38"/></filter>
+</defs>
+<rect x="12" y="12" width="488" height="488" rx="112" fill="url(#bg)" stroke="#26384c" stroke-width="3"/>
+<path filter="url(#s)" fill="url(#r)" d="M137 132h195c64 0 105 38 105 94 0 47-28 79-70 90l79 112H337L246 294h78c22 0 37-13 37-34s-15-33-37-33H205l-68-95z"/>
+<path filter="url(#s)" fill="url(#a)" d="M94 335 231 258c14-8 27 5 20 19l-57 139c-6 15-27 14-31-2l-15-57-53-4c-16-1-17-11-1-18z"/>
+<path fill="#6ee7ff" opacity=".35" d="M98 334 229 261c7-4 12 0 14 5L151 344z"/>
+</svg>
