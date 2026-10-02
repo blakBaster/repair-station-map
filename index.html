@@ -544,6 +544,7 @@ satelliteBtn.onclick=()=>{
  satelliteBtn.classList.toggle('active',satelliteMode);
  satelliteBtn.title=satelliteMode?'Обычная карта':'Спутниковая карта';
  map.setStyle(satelliteMode?SATELLITE_STYLE:STREET_STYLE);
+ map.once('style.load',()=>{if(!satelliteMode)polishStreetMap()});
  notice(satelliteMode?'Спутник включён 🛰️':'Обычная карта');
 };
 const panel=document.getElementById('panel'), alertText=document.getElementById('alertText'), alertDate=document.getElementById('alertDate');
@@ -893,7 +894,26 @@ const compass=document.getElementById('compass'),compassArrow=compass.querySelec
 function updateCompass(){const b=map.getBearing();compassArrow.style.transform=`rotate(${-b}deg)`}
 map.on('rotate',updateCompass);map.on('moveend',updateCompass);compass.onclick=()=>map.easeTo({bearing:0,duration:350});updateCompass();
 
-map.on('load',()=>{loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{
+function polishStreetMap(){
+ if(satelliteMode)return;
+ try{
+  const style=map.getStyle();
+  (style.layers||[]).forEach(layer=>{
+   const id=(layer.id||'').toLowerCase();
+   if(layer.type==='symbol'){
+    if(/road|street|place|label|name/.test(id)){
+     if(map.getPaintProperty(layer.id,'text-color')!==undefined)map.setPaintProperty(layer.id,'text-color','#aebbd0');
+     if(map.getPaintProperty(layer.id,'text-halo-color')!==undefined)map.setPaintProperty(layer.id,'text-halo-color','#26364c');
+     if(map.getPaintProperty(layer.id,'text-halo-width')!==undefined)map.setPaintProperty(layer.id,'text-halo-width',1);
+    }
+   }
+   if(layer.type==='line'&&/road|street|motorway|trunk|primary|secondary/.test(id)){
+    if(map.getPaintProperty(layer.id,'line-opacity')!==undefined)map.setPaintProperty(layer.id,'line-opacity',0.82);
+   }
+  });
+ }catch(e){console.warn('Map polish:',e)}
+}
+map.on('load',()=>{polishStreetMap();loadStations();try{if(!map.getLayer('repair-3d-buildings'))map.addLayer({id:'repair-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{
  'fill-extrusion-color':['interpolate',['linear'],['zoom'],14,'#2b3b4d',16,'#354b62',18,'#3c5670'],
  'fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],
  'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
