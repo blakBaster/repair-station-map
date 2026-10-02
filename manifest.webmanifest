@@ -1,0 +1,12 @@
+{
+  "name": "Repair Station Map",
+  "short_name": "Repair Station",
+  "description": "Карта общественных велоремонтных станций",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "lang": "ru",
+  "orientation": "any"
+}
