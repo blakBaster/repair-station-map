@@ -376,6 +376,21 @@
 /* Restore the original wrench emoji */
 .station-marker-tool{font-size:19px;line-height:1;display:grid;place-items:center;filter:none}
 .station-marker-tool svg{display:none}
+
+/* Softer marker shell: no bright outline */
+.station-marker.marker-working .station-marker-pin,
+.station-marker.marker-partial .station-marker-pin,
+.station-marker.marker-broken .station-marker-pin,
+.station-marker.marker-unknown .station-marker-pin{
+ border-color:#62748a;
+ box-shadow:0 5px 14px #0009,0 0 9px #6f8eaf24,inset 0 1px 0 #ffffff0a;
+}
+@media(hover:hover){
+ .station-marker:hover .station-marker-pin{
+  border-color:#6688ad;
+  box-shadow:0 6px 16px #0009,0 0 13px #4d9cff4a,inset 0 1px 0 #ffffff0c;
+ }
+}
 </style>
 </head>
 <body>
