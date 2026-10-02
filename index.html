@@ -278,6 +278,30 @@
  width:25px;height:25px;fill:none;stroke:#e5edf7;stroke-width:1.55;
  stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 3px #0008);
 }
+
+/* Minimal status POI marker */
+.station-marker{width:34px;height:34px}
+.station-marker::before{
+ width:30px;height:30px;background:#0b1420f2;border:1.5px solid #64748b;
+ box-shadow:0 4px 12px #0008,0 0 0 3px #07101a80;
+}
+.station-marker-core{
+ position:relative;z-index:1;width:18px;height:18px;border-radius:50%;
+ background:#101c2a;border:1px solid #334155;box-shadow:inset 0 1px 0 #ffffff0a;
+ display:grid;place-items:center;
+}
+.station-marker-status{
+ width:7px;height:7px;border-radius:50%;background:#94a3b8;
+ box-shadow:0 0 0 3px #94a3b81a;
+}
+.station-marker.marker-working .station-marker-status{background:#22e66b;box-shadow:0 0 0 3px #22c55e1f,0 0 8px #22e66b66}
+.station-marker.marker-partial .station-marker-status{background:#f3b82f;box-shadow:0 0 0 3px #f3b82f1f,0 0 8px #f3b82f55}
+.station-marker.marker-broken .station-marker-status{background:#ff6868;box-shadow:0 0 0 3px #ff68681f,0 0 8px #ff686855}
+.station-marker.marker-unknown .station-marker-status{background:#94a3b8}
+@media(hover:hover){
+ .station-marker:hover::before{transform:scale(1.08);border-color:#7fb6ff;box-shadow:0 5px 15px #0009,0 0 0 3px #3b82f62b}
+}
+.station-marker:active::before{transform:scale(.94)}
 </style>
 </head>
 <body>
@@ -519,7 +543,8 @@ function renderStation(s){
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
- const el=document.createElement('div');el.className='station-marker';el.innerHTML='<span class="station-marker-core"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="16.5" r="3.2"/><circle cx="17" cy="16.5" r="3.2"/><path d="M7 16.5l4-7 3.2 7M11 9.5h4l2 7M9.7 7h3"/><path d="M17.8 5.2a2.8 2.8 0 0 0-3.4 3.4l-4.1 4.1 1.8 1.8 4.1-4.1a2.8 2.8 0 0 0 3.4-3.4l-1.5 1.1-1.4-1.4 1.1-1.5z"/></svg></span>';el.title=s.name;
+ const el=document.createElement('div');el.className='station-marker';el.innerHTML='<span class="station-marker-core"><span class="station-marker-status"></span></span>';el.title=s.name;
+ const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
  el.addEventListener('click',openStation);
