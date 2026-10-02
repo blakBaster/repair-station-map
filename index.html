@@ -379,7 +379,7 @@
 .station-marker-tool svg{display:none}
 
 /* Softer marker shell: no bright outline */
-.station-marker.marker-pump-only .station-marker-tool{font-size:15px;letter-spacing:-7px;transform:translateX(-3px)}
+.station-marker.marker-pump-only .station-marker-tool{font-size:20px;letter-spacing:0;transform:none}
 .station-marker.marker-working .station-marker-pin,
 .station-marker.marker-partial .station-marker-pin,
 .station-marker.marker-broken .station-marker-pin,
@@ -708,7 +708,7 @@ function normalizeStation(s){
  }
  if(typeof equipment==='string'){try{equipment=JSON.parse(equipment)}catch{equipment=equipment.split(',').map(x=>x.trim()).filter(Boolean)}}
  if(!Array.isArray(equipment))equipment=fallbackStation.equipment;
- return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,status:s.status||'unknown',lastChecked:s.last_checked??s.lastChecked??null};
+ return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,has_tools:s.has_tools===true,has_rack:s.has_rack===true,has_pump:s.has_pump===true,status:s.status||'unknown',lastChecked:s.last_checked??s.lastChecked??null};
 }
 function equipmentIcon(t){
  const x=t.toLowerCase();
@@ -795,7 +795,7 @@ function renderStation(s){
 }
 let ignoreMapClickUntil=0;
 function addMarker(s){
- const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;const pumpOnly=s.has_pump===true&&s.has_tools!==true&&s.has_rack!==true;const markerIcon=pumpOnly?'🚲💨':'🔧';el.classList.toggle('marker-pump-only',pumpOnly);el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">'+markerIcon+'</span></span>';el.title=s.name;
+ const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;const pumpOnly=s.has_pump===true&&s.has_tools!==true&&s.has_rack!==true;const markerIcon=pumpOnly?'💨':'🔧';el.classList.toggle('marker-pump-only',pumpOnly);el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">'+markerIcon+'</span></span>';el.title=s.name;
  const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
