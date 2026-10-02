@@ -777,7 +777,9 @@ function setActiveStationMarker(id){
 }
 function clearActiveStationMarker(){stationMarkers.forEach(m=>m.getElement().classList.remove('active'))}
 function refreshStationDistances(){}
+let stationReturnView=null;
 function renderStation(s){
+ if(!panel.classList.contains('open'))stationReturnView={center:map.getCenter().toArray(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
  activeStation=s;setActiveStationMarker(s.id);
  stationTitle.textContent=s.name==='Repair Station #001'?'Repair Station':s.name;
  stationCoords.textContent=`${s.lat}, ${s.lng}`;
@@ -868,7 +870,16 @@ photoInput.onchange=async()=>{
  }
  markSpamAction('photo');photoInput.value='';notice('Фото отправлено на модерацию ✓');
 };
-document.getElementById('close').onclick=()=>{panel.classList.remove('open');clearActiveStationMarker()};
+function closeStationCard(){
+ panel.classList.remove('open');clearActiveStationMarker();
+ if(stationReturnView){
+  map.easeTo({center:stationReturnView.center,zoom:stationReturnView.zoom,bearing:stationReturnView.bearing,pitch:stationReturnView.pitch,duration:480,easing:t=>1-Math.pow(1-t,3),essential:true});
+  stationReturnView=null;
+ }else if(activeStation){
+  map.easeTo({center:[activeStation.lng,activeStation.lat],zoom:Math.max(14.8,map.getZoom()-1.25),duration:420,easing:t=>1-Math.pow(1-t,3),essential:true});
+ }
+}
+document.getElementById('close').onclick=closeStationCard;
 document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
 
 let userMarker=null,currentUserLngLat=null,locationWatchId=null;
@@ -1237,7 +1248,7 @@ async function moderatePhoto(id,status,card){
 map.on('click',e=>{
  if(Date.now()<ignoreMapClickUntil)return;
  if(e?.originalEvent?.target?.closest?.('.station-marker'))return;
- if(panel.classList.contains('open')){panel.classList.remove('open');clearActiveStationMarker()}
+ if(panel.classList.contains('open')){panel.classList.remove('open');clearActiveStationMarker();stationReturnView=null}
  if(moderationMarker)closeMapPoint();
 });
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
