@@ -808,6 +808,33 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
  #myActionsModal .summarynav button{min-height:68px!important}
  #myActionsModal #myActionsList .userbuttons button{min-height:40px!important}
 }
+
+/* Mobile UX pass 2: map + station card */
+@media(max-width:600px){
+ .panel{
+  left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;
+  max-height:68dvh!important;border-radius:20px 20px 0 0!important;border-bottom:0!important;
+  padding:10px 14px max(14px,env(safe-area-inset-bottom))!important;
+  overscroll-behavior:contain;box-shadow:0 -16px 50px #0008!important
+ }
+ .panel-handle{margin:0 auto 10px!important}
+ .panel .row{gap:10px!important}
+ .panel .station-card-icon{width:42px!important;height:42px!important;min-width:42px!important}
+ .panel .title{font-size:18px!important}
+ .panel .stationmeta{margin:10px 0 3px!important}
+ .panel .tools{margin:9px 0!important}
+ .panel .station-community{margin:8px 0!important;gap:5px!important}
+ .panel .station-community span,.panel .station-community button{padding:7px 8px!important;font-size:10.5px!important}
+ .panel .alertbox{margin:8px 0!important}
+ .panel .station-secondary-actions{gap:6px!important;margin-top:7px!important}
+ .panel .alertbtn{min-height:42px!important;margin-bottom:6px!important}
+ .panel .actions{position:sticky!important;bottom:calc(-1 * max(14px,env(safe-area-inset-bottom)))!important;z-index:4;margin:5px -14px calc(-1 * max(14px,env(safe-area-inset-bottom)))!important;padding:8px 14px max(12px,env(safe-area-inset-bottom))!important;background:linear-gradient(180deg,#0d172300,#0d1723 28%)!important}
+ .panel .route,.panel .close{min-height:44px!important}
+ .stationphotos.show{min-height:92px!important}
+ .stationphotoitem{width:124px!important;height:88px!important;min-width:124px!important;flex-basis:124px!important}
+ .nearestmenu{right:64px!important;width:min(220px,calc(100vw - 84px))!important}
+ .notice{top:max(74px,calc(env(safe-area-inset-top) + 62px))!important}
+}
 </style>
 </head>
 <body>
