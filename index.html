@@ -898,16 +898,6 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 .panel #favoriteStation{min-width:104px}
 .panel #favoriteStation:active{filter:brightness(1.15)}
 .panel .statuspill,.panel .checkedpill,.panel .chip{user-select:none}
-
-/* Final station/map interaction pass */
-.station-marker{touch-action:manipulation}
-.station-marker:focus-visible .station-marker-pin{outline:2px solid #8ecbff;outline-offset:3px}
-.panel .route,.panel .close,.panel .alertbtn,.panel .station-community button{touch-action:manipulation}
-.panel .close{min-width:44px}
-@media(max-width:600px){
- .panel .route,.panel .close{min-height:44px!important}
- .panel .station-community button{min-height:34px}
-}
 </style>
 </head>
 <body>
@@ -1112,7 +1102,6 @@ photoStripPrev.onclick=e=>{e.preventDefault();e.stopPropagation();smoothPhotoScr
 window.addEventListener('resize',updatePhotoStripArrows);
 async function loadApprovedPhotos(stationId){
  stationPhotos.classList.remove('show');stationPhotos.innerHTML='';
- const requestedStationId=String(stationId);
  const {data,error}=await db.from('station_photos').select('id,storage_path').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
  if(error){console.warn('Approved photos:',error);return}
  for(const p of data||[]){
@@ -1124,13 +1113,11 @@ async function loadApprovedPhotos(stationId){
      if(!urlError&&signed?.signedUrl){url=signed.signedUrl;break}
    }
    if(!url){console.warn('Photo object not found:',raw);continue}
-   if(!activeStation||String(activeStation.id)!==requestedStationId)return;
    const item=document.createElement('div');item.className='stationphotoitem';
    const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='eager';img.onclick=()=>{lightboxImg.src=url;currentLightboxPhoto={id:p.id,stationId};lightboxAdminDelete.classList.toggle('show',!!adminBypass);lightbox.classList.add('open')};item.appendChild(img);
    if(adminBypass){const del=document.createElement('button');del.className='photo-delete-btn';del.title='Удалить фото';del.setAttribute('aria-label','Удалить фото');del.innerHTML="<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7h16\"/><path d=\"M9 7V4h6v3\"/><path d=\"M6.5 7l1 13h9l1-13\"/><path d=\"M10 11v5M14 11v5\"/></svg>";del.onclick=e=>{e.preventDefault();e.stopPropagation();askDeletePhoto(p.id,stationId)};item.appendChild(del)}
    stationPhotos.appendChild(item);
  }
- if(!activeStation||String(activeStation.id)!==requestedStationId)return;
  if(stationPhotos.children.length)stationPhotos.classList.add('show');requestAnimationFrame(updatePhotoStripArrows);
 }
 function focusStationForCard(s){
@@ -1161,8 +1148,6 @@ function refreshStationDistances(){}
 let stationReturnView=null;
 function renderStation(s){
  const wasOpen=panel.classList.contains('open');
- document.getElementById('nearestMenu')?.classList.remove('open');
- document.getElementById('statusFilterMenu')?.classList.remove('open');
  if(!wasOpen)stationReturnView={center:map.getCenter().toArray(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
  activeStation=s;setActiveStationMarker(s.id);
  const recent=JSON.parse(localStorage.getItem('recent_stations')||'[]').filter(x=>String(x)!==String(s.id));recent.unshift(s.id);localStorage.setItem('recent_stations',JSON.stringify(recent.slice(0,10)));
@@ -1184,17 +1169,14 @@ function renderStation(s){
 
 async function loadStationConfidence(s){
  const el=document.getElementById('stationReliability');if(!el)return;
- const stationId=String(s.id);
- const {data}=await db.rpc('get_station_confidence',{p_station_id:s.id});
- if(!activeStation||String(activeStation.id)!==stationId)return;
- const x=Array.isArray(data)?data[0]:data;
+ const {data}=await db.rpc('get_station_confidence',{p_station_id:s.id});const x=Array.isArray(data)?data[0]:data;
  const n=Number(x?.confirmations||0),trust=Number(x?.trust_score||0);
  if(n>0)el.textContent+=' · '+n+' подтвержд.'+(trust>n?' · доверие '+trust:'');
 }
 
 let ignoreMapClickUntil=0;
 function addMarker(s){
- const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label',(s.name||'Repair Station')+' — открыть карточку');const pumpOnly=s.has_pump===true&&s.has_tools!==true;const markerIcon=pumpOnly?'💨':'🔧';el.classList.toggle('marker-pump-only',pumpOnly);el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">'+markerIcon+'</span></span>';el.title=s.name;
+ const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;const pumpOnly=s.has_pump===true&&s.has_tools!==true;const markerIcon=pumpOnly?'💨':'🔧';el.classList.toggle('marker-pump-only',pumpOnly);el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">'+markerIcon+'</span></span>';el.title=s.name;
  const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  let markerTouchStart=null,markerTouchMoved=false,markerMultiTouch=false,suppressMarkerClickUntil=0;
@@ -1220,7 +1202,6 @@ function addMarker(s){
   if(Date.now()<suppressMarkerClickUntil)return;
   e.preventDefault();e.stopPropagation();ignoreMapClickUntil=Date.now()+500;renderStation(s);
  });
- el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();renderStation(s)}});
  stationMarkers.push(marker);
 }
 
@@ -1285,7 +1266,7 @@ function closeStationCard(){
  }
 }
 document.getElementById('close').onclick=closeStationCard;
-document.getElementById('route').onclick=()=>{if(!activeStation)return;window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank','noopener')};
+document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
 
 let userMarker=null,currentUserLngLat=null,locationWatchId=null;
 function distanceMeters(lat1,lng1,lat2,lng2){const R=6371000,toRad=x=>x*Math.PI/180;const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(a))}
@@ -1593,7 +1574,7 @@ async function loadPublishedStations(){refreshAdminDashboard();
   const buttons=document.createElement('div');buttons.className='stationadminbuttons';
   const view=document.createElement('button');view.className='stationview';view.textContent='◉ Обзор';view.onclick=()=>{adminModal.classList.remove('open');showMapPoint(s.lat,s.lng,(s.name||'Repair Station')+' #'+s.id,s.id)};
   const move=document.createElement('button');move.className='stationmove';move.textContent='📍 Переместить';move.onclick=()=>startStationMove(s); const edit=document.createElement('button');edit.className='stationmove';edit.textContent='✏️ Изменить';edit.onclick=()=>editPublishedStation(s);
-  const del=document.createElement('button');del.className='stationdelete';del.textContent='🗑 Удалить';del.onclick=async()=>{if(!confirm('Убрать '+(s.name||'Repair Station')+' #'+s.id+' с карты? История сохранится в архиве.'))return;del.disabled=true;const {error:e}=await db.rpc('admin_archive_station',{p_station_id:s.id});if(e){console.error(e);del.disabled=false;notice('Не удалось удалить станцию');return}if(activeStation&&String(activeStation.id)===String(s.id))closeStationCard()notice('Станция убрана с карты');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()])};
+  const del=document.createElement('button');del.className='stationdelete';del.textContent='🗑 Удалить';del.onclick=async()=>{if(!confirm('Убрать '+(s.name||'Repair Station')+' #'+s.id+' с карты? История сохранится в архиве.'))return;del.disabled=true;const {error:e}=await db.rpc('admin_archive_station',{p_station_id:s.id});if(e){console.error(e);del.disabled=false;notice('Не удалось удалить станцию');return}if(activeStation&&String(activeStation.id)===String(s.id)){panel.classList.remove('open');activeStation=null}notice('Станция убрана с карты');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()])};
   buttons.append(view,edit,move,del);row.appendChild(buttons);card.appendChild(row);publishedStationQueue.appendChild(card);
  }
  if(!publishedStationQueue.children.length)publishedStationQueue.innerHTML='<div class="adminmsg">Опубликованных станций нет.</div>';
