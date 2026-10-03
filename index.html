@@ -632,6 +632,37 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 #myActionsModal #myActionsList .useritem{margin:0}
 #adminDashboard{grid-template-columns:repeat(6,minmax(0,1fr))}
 @media(max-width:768px){.summarynav{grid-template-columns:repeat(2,minmax(0,1fr))}#adminDashboard{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* My Actions — compact cohesive layout */
+#myActionsModal .userbox{width:min(680px,calc(100% - 24px));max-height:88vh;padding:16px;background:linear-gradient(180deg,#101b2b,#0b1523)}
+#myActionsModal .userhead{position:sticky;top:-16px;z-index:4;margin:-16px -16px 12px;padding:15px 16px 11px;background:#0f1a2af2;backdrop-filter:blur(16px);border-bottom:1px solid #ffffff0b}
+#myActionsModal .profilecard{padding:13px;margin:0 0 9px;border-radius:13px}
+#myActionsModal .profilestats{grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px;padding-top:8px}
+#myActionsModal .profiledates{grid-column:1/3}
+#myActionsModal .profileachievements,#myActionsModal .profilebadges{grid-column:1/-1}
+#myActionsModal .profileextras{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;border:0;background:transparent}
+#myActionsModal #leaderboardOpen{grid-column:1/-1;text-align:left;border:1px solid #ffffff10!important;background:#ffffff05!important;color:#e7eef8!important;border-radius:11px!important;padding:10px 12px!important}
+#myActionsModal .profileextras>div:not(.leaderboardbox){min-width:0;padding:10px;border:1px solid #ffffff0e;border-radius:11px;background:#ffffff035}
+#myActionsModal .profileextras>div>b{display:block;font-size:11px;color:#9eacc0;margin-bottom:7px}
+#myActionsModal .mini-list{margin:0;gap:5px}
+#myActionsModal .mini-list button{border:1px solid #ffffff0e;background:#ffffff07;color:#dce6f2;border-radius:8px;padding:5px 7px;font-size:10px}
+#myActionsModal .leaderboardbox{grid-column:1/-1}
+#myActionsModal .myactions-section-title{margin:13px 1px 7px;font-size:10px;color:#718096}
+#myActionsModal .summarynav{grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 10px}
+#myActionsModal .summarynav button{padding:9px 10px;border-radius:11px;background:#ffffff045;color:#8d9caf}
+#myActionsModal .summarynav button.active{background:#14243a;border-color:#5599df42}
+#myActionsModal .summarynav .summaryicon{font-size:14px;margin-bottom:6px}
+#myActionsModal .summarynav b{font-size:16px;margin-bottom:3px}
+#myActionsModal .summarynav small{font-size:9.5px}
+#myActionsModal #myActionsList{gap:6px}
+#myActionsModal #myActionsList .useritem{padding:11px 12px;border-radius:12px;background:#ffffff035;border-color:#ffffff0e}
+#myActionsModal #myActionsList .useritem>b{font-size:13px}
+#myActionsModal #myActionsList .userdetail{font-size:11.5px;line-height:1.45;margin-top:6px;color:#d7e0ec}
+#myActionsModal #myActionsList .muted{font-size:10.5px;margin-top:6px}
+#myActionsModal #myActionsList .userbuttons{margin-top:8px;gap:6px}
+#myActionsModal #myActionsList .userbuttons button{padding:7px 9px;border-radius:8px;font-size:10.5px;background:#17283e;color:#e8f0fa;border:1px solid #ffffff0d}
+#myActionsModal #myActionsList .userbuttons button:last-child{background:#ffffff08;color:#cbd5e1}
+@media(max-width:600px){#myActionsModal .userbox{width:calc(100% - 16px);padding:12px}#myActionsModal .userhead{top:-12px;margin:-12px -12px 10px;padding:13px 12px 10px}#myActionsModal .profileextras{grid-template-columns:1fr}#myActionsModal #leaderboardOpen,#myActionsModal .leaderboardbox{grid-column:1}#myActionsModal .summarynav{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
