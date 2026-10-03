@@ -1158,6 +1158,29 @@ async function loadApprovedPhotos(stationId){
  if(activeStation&&String(activeStation.id)===key)renderStationPhotos(stationId,photos);
 }
 function prefetchStationPhotos(stationId){if(!stationPhotoCache.has(String(stationId)))fetchApprovedPhotos(stationId).catch(()=>{})}
+let mobilePhotoWarmupStarted=false;
+async function warmMobileStationPhotos(){
+ if(mobilePhotoWarmupStarted||!window.matchMedia('(max-width:800px)').matches||!navigator.onLine)return;
+ mobilePhotoWarmupStarted=true;
+ try{
+  const {data,error}=await db.from('station_photos').select('id,station_id,storage_path').eq('moderation_status','approved').order('created_at',{ascending:false});
+  if(error)throw error;
+  const rows=data||[],paths=rows.map(p=>String(p.storage_path||'').trim().replace(/^\/+|^station-photos\//g,'')).filter(Boolean);
+  if(!paths.length)return;
+  const {data:signed,error:signError}=await db.storage.from('station-photos').createSignedUrls(paths,3600);
+  if(signError)throw signError;
+  const byStation=new Map();
+  rows.forEach((p,i)=>{const url=signed?.[i]?.signedUrl;if(!url)return;const key=String(p.station_id),arr=byStation.get(key)||[];arr.push({id:p.id,url});byStation.set(key,arr)});
+  const now=Date.now();
+  byStation.forEach((photos,key)=>stationPhotoCache.set(key,{time:now,photos}));
+  const preload=[];
+  byStation.forEach(photos=>photos.slice(0,2).forEach(p=>preload.push(p.url)));
+  preload.forEach((url,i)=>setTimeout(()=>{const img=new Image();img.decoding='async';img.src=url},Math.min(i,20)*35));
+ }catch(e){
+  console.warn('Mobile photo warmup:',e);
+  mobilePhotoWarmupStarted=false;
+ }
+}
 
 function focusStationForCard(s){
  const desktop=window.matchMedia('(min-width:801px)').matches;
@@ -1253,7 +1276,7 @@ async function loadStations(){
  }catch(e){
   console.warn('Stations fallback:',e);const cached=JSON.parse(localStorage.getItem('cached_stations')||'[]');stations=cached.length?cached.map(normalizeStation):[fallbackStation];notice(cached.length?'Офлайн · показаны сохранённые станции':'Нет соединения');
  }
- stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);document.getElementById('map').classList.remove('map-loading');
+ stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);document.getElementById('map').classList.remove('map-loading');setTimeout(warmMobileStationPhotos,120);
 }
 document.getElementById('alertBtn').onclick=async()=>{
  if(!spamAllowed('report'))return;
