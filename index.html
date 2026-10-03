@@ -1099,8 +1099,17 @@ function focusStationForCard(s){
   const cardWidth=Math.min(500,window.innerWidth-36);
   map.flyTo({center:[s.lng,s.lat],zoom,padding:{left:cardWidth+36,right:18,top:18,bottom:18},duration:780,curve:1.15,speed:1.25,essential:true});
  }else{
-  map.flyTo({center:[s.lng,s.lat],zoom:Math.max(map.getZoom(),16.5),duration:680,curve:1.12,speed:1.25,essential:true});
- }
+   // On mobile, keep the selected station just above the card so the relationship is obvious.
+   const cardHeight=Math.min(panel.getBoundingClientRect().height||0,window.innerHeight*.72);
+   const visibleMapHeight=Math.max(150,window.innerHeight-cardHeight);
+   const targetY=Math.max(92,visibleMapHeight-18);
+   const currentPoint=map.project([s.lng,s.lat]);
+   const centerPoint=map.project(map.getCenter());
+   const dx=currentPoint.x-window.innerWidth/2;
+   const dy=currentPoint.y-targetY;
+   const targetCenter=map.unproject([centerPoint.x+dx,centerPoint.y+dy]);
+   map.flyTo({center:targetCenter,zoom:Math.max(map.getZoom(),16.5),duration:520,curve:1.08,speed:1.35,essential:true});
+  }
 }
 function setActiveStationMarker(id){
  stationMarkers.forEach(m=>m.getElement().classList.toggle('active',String(m.getElement().dataset.stationId)===String(id)));
