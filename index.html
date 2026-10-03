@@ -1713,9 +1713,12 @@ async function refreshAdminDashboard(){const box=document.getElementById('adminD
 map.on('click',e=>{
  if(Date.now()<ignoreMapClickUntil)return;
  if(e?.originalEvent?.target?.closest?.('.station-marker'))return;
- if(panel.classList.contains('open'))closeStationCard()
+ if(panel.classList.contains('open'))closeStationCard();
  if(moderationMarker)closeMapPoint();
 });
+// Dragging/zooming is exploration, not a request to close the station card.
+// Keep the card stable while the user moves the map; only an intentional empty-map tap or ✕ closes it.
+
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
 </script>
 <script>
