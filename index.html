@@ -1089,26 +1089,41 @@ stationPhotos.addEventListener('scroll',updatePhotoStripArrows,{passive:true});
 photoStripNext.onclick=e=>{e.preventDefault();e.stopPropagation();smoothPhotoScrollBy(Math.max(158,stationPhotos.clientWidth*.7))};
 photoStripPrev.onclick=e=>{e.preventDefault();e.stopPropagation();smoothPhotoScrollBy(-Math.max(158,stationPhotos.clientWidth*.7))};
 window.addEventListener('resize',updatePhotoStripArrows);
-async function loadApprovedPhotos(stationId){
- stationPhotos.classList.remove('show');stationPhotos.innerHTML='';
- const {data,error}=await db.from('station_photos').select('id,storage_path').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
- if(error){console.warn('Approved photos:',error);return}
- for(const p of data||[]){
-   const raw=String(p.storage_path||'').trim();
-   const candidates=[raw,raw.replace(/^\/+/,''),raw.replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
-   let url=null;
-   for(const path of candidates){
-     const {data:signed,error:urlError}=await db.storage.from('station-photos').createSignedUrl(path,3600);
-     if(!urlError&&signed?.signedUrl){url=signed.signedUrl;break}
-   }
-   if(!url){console.warn('Photo object not found:',raw);continue}
-   const item=document.createElement('div');item.className='stationphotoitem';
-   const img=document.createElement('img');img.src=url;img.alt='Фото Repair Station';img.loading='eager';img.onclick=()=>{lightboxImg.src=url;currentLightboxPhoto={id:p.id,stationId};lightboxAdminDelete.classList.toggle('show',!!adminBypass);lightbox.classList.add('open')};item.appendChild(img);
-   if(adminBypass){const del=document.createElement('button');del.className='photo-delete-btn';del.title='Удалить фото';del.setAttribute('aria-label','Удалить фото');del.innerHTML="<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7h16\"/><path d=\"M9 7V4h6v3\"/><path d=\"M6.5 7l1 13h9l1-13\"/><path d=\"M10 11v5M14 11v5\"/></svg>";del.onclick=e=>{e.preventDefault();e.stopPropagation();askDeletePhoto(p.id,stationId)};item.appendChild(del)}
-   stationPhotos.appendChild(item);
+const stationPhotoCache=new Map();
+function renderStationPhotos(stationId,photos){
+ stationPhotos.innerHTML='';
+ for(const p of photos||[]){
+  const item=document.createElement('div');item.className='stationphotoitem';
+  const img=document.createElement('img');img.src=p.url;img.alt='Фото Repair Station';img.loading='eager';img.decoding='async';img.onclick=()=>{lightboxImg.src=p.url;currentLightboxPhoto={id:p.id,stationId};lightboxAdminDelete.classList.toggle('show',!!adminBypass);lightbox.classList.add('open')};item.appendChild(img);
+  if(adminBypass){const del=document.createElement('button');del.className='photo-delete-btn';del.title='Удалить фото';del.setAttribute('aria-label','Удалить фото');del.innerHTML="<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7h16\"/><path d=\"M9 7V4h6v3\"/><path d=\"M6.5 7l1 13h9l1-13\"/><path d=\"M10 11v5M14 11v5\"/></svg>";del.onclick=e=>{e.preventDefault();e.stopPropagation();askDeletePhoto(p.id,stationId)};item.appendChild(del)}
+  stationPhotos.appendChild(item);
  }
- if(stationPhotos.children.length)stationPhotos.classList.add('show');requestAnimationFrame(updatePhotoStripArrows);
+ stationPhotos.classList.toggle('show',stationPhotos.children.length>0);
+ requestAnimationFrame(updatePhotoStripArrows);
 }
+async function fetchApprovedPhotos(stationId){
+ const key=String(stationId),cached=stationPhotoCache.get(key);
+ if(cached&&Date.now()-cached.time<55*60*1000)return cached.photos;
+ const {data,error}=await db.from('station_photos').select('id,storage_path').eq('station_id',stationId).eq('moderation_status','approved').order('created_at',{ascending:false});
+ if(error){console.warn('Approved photos:',error);return cached?.photos||[]}
+ const photos=(await Promise.all((data||[]).map(async p=>{
+  const raw=String(p.storage_path||'').trim();
+  const candidates=[raw,raw.replace(/^\/+/,''),raw.replace(/^station-photos\//,'')].filter((v,i,a)=>v&&a.indexOf(v)===i);
+  const attempts=await Promise.all(candidates.map(async path=>{const {data:signed}=await db.storage.from('station-photos').createSignedUrl(path,3600);return signed?.signedUrl||null}));
+  const url=attempts.find(Boolean);return url?{id:p.id,url}:null;
+ }))).filter(Boolean);
+ stationPhotoCache.set(key,{time:Date.now(),photos});
+ return photos;
+}
+async function loadApprovedPhotos(stationId){
+ const key=String(stationId),cached=stationPhotoCache.get(key);
+ if(cached){renderStationPhotos(stationId,cached.photos);return}
+ stationPhotos.classList.remove('show');stationPhotos.innerHTML='';
+ const photos=await fetchApprovedPhotos(stationId);
+ if(activeStation&&String(activeStation.id)===key)renderStationPhotos(stationId,photos);
+}
+function prefetchStationPhotos(stationId){if(!stationPhotoCache.has(String(stationId)))fetchApprovedPhotos(stationId).catch(()=>{})}
+
 function focusStationForCard(s){
  const desktop=window.matchMedia('(min-width:801px)').matches;
  const zoom=Math.max(map.getZoom(),17);
@@ -1165,7 +1180,9 @@ function addMarker(s){
  const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
  let markerTouchStart=null,markerTouchMoved=false,markerMultiTouch=false,suppressMarkerClickUntil=0;
+ el.addEventListener('pointerenter',()=>prefetchStationPhotos(s.id),{passive:true});
  el.addEventListener('touchstart',e=>{
+  prefetchStationPhotos(s.id);
   markerMultiTouch=e.touches.length!==1;
   markerTouchMoved=false;
   const t=e.touches[0];
