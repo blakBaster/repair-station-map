@@ -1085,10 +1085,7 @@ async function loadAlert(stationId){
   const rows=data||[],r=rows[0];
   if(!r){alertText.textContent='Сообщений пока нет';alertDate.textContent='Будьте первым, кто проверит эту станцию';return}
   alertText.textContent=r.message||'Без комментария';
-  const recent=rows.filter(x=>Date.now()-new Date(x.created_at).getTime()<=14*86400000),counts={working:0,partial:0,broken:0};
-  recent.forEach(x=>{if(counts[x.status]!==undefined)counts[x.status]++});
-  const parts=[];if(counts.working)parts.push('🟢 '+counts.working);if(counts.partial)parts.push('🟡 '+counts.partial);if(counts.broken)parts.push('🔴 '+counts.broken);
-  alertDate.textContent=relativeCommunityTime(r.created_at)+(parts.length?' · за 14 дней '+parts.join('  '):'');
+  alertDate.textContent=relativeCommunityTime(r.created_at);
   const [cls,label]=statusInfo(r.status);stationStatus.className='statuspill '+cls;stationStatus.textContent=label;lastChecked.textContent=checkedText(r.created_at);
  }catch(e){console.error('loadAlert',e);if(activeStation&&String(activeStation.id)===String(stationId)){alertText.textContent='Не удалось загрузить сообщения';alertDate.textContent=''}}
 }
