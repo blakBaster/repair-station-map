@@ -887,17 +887,6 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
  .panel.open{animation:none}
  .station-marker,.panel .route,.panel .close,.panel .alertbtn,.panel .station-community button{transition:none!important}
 }
-
-/* Marker stability guard: never animate transforms inside MapLibre markers */
-.station-marker,.station-marker-pin,.station-marker-tool{transform:none!important}
-.station-marker,.station-marker-pin,.station-marker-tool{transition-property:box-shadow,border-color,filter,opacity!important}
-.station-marker:hover .station-marker-pin,.station-marker:active .station-marker-pin,.station-marker.active .station-marker-pin{transform:none!important}
-
-/* Station card state clarity */
-.panel button:disabled{opacity:.52;cursor:default;filter:saturate(.55)}
-.panel #favoriteStation{min-width:104px}
-.panel #favoriteStation:active{filter:brightness(1.15)}
-.panel .statuspill,.panel .checkedpill,.panel .chip{user-select:none}
 </style>
 </head>
 <body>
@@ -1147,8 +1136,7 @@ function clearActiveStationMarker(){stationMarkers.forEach(m=>m.getElement().cla
 function refreshStationDistances(){}
 let stationReturnView=null;
 function renderStation(s){
- const wasOpen=panel.classList.contains('open');
- if(!wasOpen)stationReturnView={center:map.getCenter().toArray(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
+ if(!panel.classList.contains('open'))stationReturnView={center:map.getCenter().toArray(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
  activeStation=s;setActiveStationMarker(s.id);
  const recent=JSON.parse(localStorage.getItem('recent_stations')||'[]').filter(x=>String(x)!==String(s.id));recent.unshift(s.id);localStorage.setItem('recent_stations',JSON.stringify(recent.slice(0,10)));
  const favs=JSON.parse(localStorage.getItem('favorite_stations')||'[]');document.getElementById('favoriteStation').textContent=favs.some(x=>String(x)===String(s.id))?'★ В избранном':'☆ В избранное';
@@ -1161,10 +1149,7 @@ function renderStation(s){
  stationTools.innerHTML='';
  s.equipment.forEach(t=>{const e=document.createElement('span');e.className='chip';e.innerHTML='<span class="chip-icon">'+equipmentIcon(String(t))+'</span><span>'+escapeHtml(String(t))+'</span>';stationTools.appendChild(e)});
  alertText.textContent='Загрузка…';alertDate.textContent='';
- panel.classList.add('open');panel.scrollTop=0;
- // First open focuses the station; switching between already-open station cards does not keep dragging the map around.
- if(!wasOpen)focusStationForCard(s);
- loadAlert(s.id);loadApprovedPhotos(s.id);loadStationConfidence(s);
+ panel.classList.add('open');panel.scrollTop=0;focusStationForCard(s);loadAlert(s.id);loadApprovedPhotos(s.id);loadStationConfidence(s);
 }
 
 async function loadStationConfidence(s){
@@ -1259,10 +1244,11 @@ photoInput.onchange=async()=>{
 };
 function closeStationCard(){
  panel.classList.remove('open');clearActiveStationMarker();
- activeStation=null;
  if(stationReturnView){
   map.easeTo({center:stationReturnView.center,zoom:stationReturnView.zoom,bearing:stationReturnView.bearing,pitch:stationReturnView.pitch,duration:480,easing:t=>1-Math.pow(1-t,3),essential:true});
   stationReturnView=null;
+ }else if(activeStation){
+  map.easeTo({center:[activeStation.lng,activeStation.lat],zoom:Math.max(14.8,map.getZoom()-1.25),duration:420,easing:t=>1-Math.pow(1-t,3),essential:true});
  }
 }
 document.getElementById('close').onclick=closeStationCard;
@@ -1694,7 +1680,7 @@ async function moderatePhoto(id,status,card){
 }
 
 
-document.getElementById('favoriteStation').onclick=()=>{if(!activeStation)return;let a=JSON.parse(localStorage.getItem('favorite_stations')||'[]');const i=a.findIndex(x=>String(x)===String(activeStation.id));if(i>=0)a.splice(i,1);else a.unshift(activeStation.id);localStorage.setItem('favorite_stations',JSON.stringify(a));document.getElementById('favoriteStation').textContent=i>=0?'☆ В избранное':'★ В избранном';notice(i>=0?'Удалено из избранного':'★ Добавлено в избранное')};
+document.getElementById('favoriteStation').onclick=()=>{if(!activeStation)return;let a=JSON.parse(localStorage.getItem('favorite_stations')||'[]');const i=a.findIndex(x=>String(x)===String(activeStation.id));if(i>=0)a.splice(i,1);else a.unshift(activeStation.id);localStorage.setItem('favorite_stations',JSON.stringify(a));document.getElementById('favoriteStation').textContent=i>=0?'☆ В избранное':'★ В избранном'};
 document.getElementById('adminDeleteStation').onclick=async()=>{
  if(!adminBypass||!activeStation)return;
  const s=activeStation;
@@ -1724,12 +1710,9 @@ async function refreshAdminDashboard(){const box=document.getElementById('adminD
 map.on('click',e=>{
  if(Date.now()<ignoreMapClickUntil)return;
  if(e?.originalEvent?.target?.closest?.('.station-marker'))return;
- if(panel.classList.contains('open'))closeStationCard();
+ if(panel.classList.contains('open'))closeStationCard()
  if(moderationMarker)closeMapPoint();
 });
-// Dragging/zooming is exploration, not a request to close the station card.
-// Keep the card stable while the user moves the map; only an intentional empty-map tap or ✕ closes it.
-
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
 </script>
 <script>
