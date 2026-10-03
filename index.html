@@ -1699,8 +1699,28 @@ map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
 </script>
 <script>
 if('serviceWorker' in navigator){
- window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('Service worker:',e)));
+ window.addEventListener('load',async()=>{
+  try{
+   const reg=await navigator.serviceWorker.register('./sw.js');
+   reg.update().catch(()=>{});
+   let refreshing=false;
+   navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+   });
+   reg.addEventListener('updatefound',()=>{
+    const worker=reg.installing;
+    if(!worker)return;
+    worker.addEventListener('statechange',()=>{
+     if(worker.state==='installed'&&navigator.serviceWorker.controller)notice('Обновление карты готово · применяем…');
+    });
+   });
+  }catch(e){console.warn('Service worker:',e)}
+ });
 }
+window.addEventListener('offline',()=>notice('Нет интернета · доступны сохранённые станции'));
+window.addEventListener('online',()=>{notice('Интернет восстановлен ✓');loadStations().catch(()=>{})});
 </script>
 <!-- build: community-roadmap-2026-10-03 -->
 </body></html>
