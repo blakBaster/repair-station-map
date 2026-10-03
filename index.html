@@ -915,27 +915,25 @@ let clusterMarkers=[],clusterFrame=0,lastClusterSignature='';
 function clearClusters(){clusterMarkers.forEach(m=>m.remove());clusterMarkers=[];lastClusterSignature=''}
 function refreshMarkerClusters(){
  cancelAnimationFrame(clusterFrame);clusterFrame=requestAnimationFrame(()=>{
-  const z=map.getZoom(),radius=z<11?84:z<12?74:z<13?64:z<14?54:46;
+  const z=map.getZoom(),radius=z<11?118:z<12?104:z<13?90:z<14?76:64;
   if(z>=14.65||stationMarkers.length<8){if(clusterMarkers.length)clearClusters();stationMarkers.forEach(m=>m.getElement().classList.remove('cluster-hidden'));return}
-  const points=stationMarkers.map(m=>({m,p:map.project(m.getLngLat())})),used=new Set(),groups=[];
-  for(let i=0;i<points.length;i++){if(used.has(i))continue;const group=[points[i].m];used.add(i);let changed=true;
-   while(changed){changed=false;let cx=0,cy=0;for(const gm of group){const gp=map.project(gm.getLngLat());cx+=gp.x;cy+=gp.y}cx/=group.length;cy/=group.length;
-    for(let j=0;j<points.length;j++){if(used.has(j))continue;const dx=points[j].p.x-cx,dy=points[j].p.y-cy;if(dx*dx+dy*dy<=radius*radius){group.push(points[j].m);used.add(j);changed=true}}
-   }groups.push(group)
-  }
-  const clustered=groups.filter(g=>g.length>1),signature=Math.round(z*12)+'|'+clustered.map(g=>g.map(m=>m.getElement().dataset.stationId).sort().join(',')).sort().join('|');
+  const pts=stationMarkers.map(m=>({m,p:map.project(m.getLngLat())})),parent=pts.map((_,i)=>i);
+  const find=i=>parent[i]===i?i:(parent[i]=find(parent[i]));const join=(a,b)=>{a=find(a);b=find(b);if(a!==b)parent[b]=a};
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].p.x-pts[j].p.x,dy=pts[i].p.y-pts[j].p.y;if(dx*dx+dy*dy<=radius*radius)join(i,j)}
+  const byRoot=new Map();for(let i=0;i<pts.length;i++){const r=find(i);if(!byRoot.has(r))byRoot.set(r,[]);byRoot.get(r).push(pts[i].m)}
+  const clustered=[...byRoot.values()].filter(g=>g.length>1),signature=Math.round(z*12)+'|'+clustered.map(g=>g.map(m=>m.getElement().dataset.stationId).sort().join(',')).sort().join('|');
   if(signature===lastClusterSignature)return;lastClusterSignature=signature;
   const hidden=new Set(clustered.flat());stationMarkers.forEach(m=>m.getElement().classList.toggle('cluster-hidden',hidden.has(m)));
-  clusterMarkers.forEach(m=>{const el=m.getElement();el.classList.add('leaving');setTimeout(()=>m.remove(),120)});clusterMarkers=[];
-  for(const group of clustered){const lng=group.reduce((a,m)=>a+m.getLngLat().lng,0)/group.length,lat=group.reduce((a,m)=>a+m.getLngLat().lat,0)/group.length;
+  clusterMarkers.forEach(m=>{const el=m.getElement();el.classList.add('leaving');setTimeout(()=>m.remove(),110)});clusterMarkers=[];
+  for(const group of clustered){
+   let sx=0,sy=0;group.forEach(m=>{const p=map.project(m.getLngLat());sx+=p.x;sy+=p.y});const center=map.unproject([sx/group.length,sy/group.length]);
    const el=document.createElement('button');el.className='stationcluster';el.innerHTML='<span>'+group.length+'</span>';el.setAttribute('aria-label',group.length+' станций');
-   el.onclick=e=>{e.stopPropagation();const bounds=new maplibregl.LngLatBounds();group.forEach(m=>bounds.extend(m.getLngLat()));map.fitBounds(bounds,{padding:90,maxZoom:15.6,duration:650,easing:t=>1-Math.pow(1-t,3)})};
-   const marker=new maplibregl.Marker({element:el}).setLngLat([lng,lat]).addTo(map);clusterMarkers.push(marker);requestAnimationFrame(()=>el.classList.add('visible'));
+   el.onclick=e=>{e.stopPropagation();const bounds=new maplibregl.LngLatBounds();group.forEach(m=>bounds.extend(m.getLngLat()));map.fitBounds(bounds,{padding:105,maxZoom:15.7,duration:650,easing:t=>1-Math.pow(1-t,3)})};
+   const marker=new maplibregl.Marker({element:el}).setLngLat(center).addTo(map);clusterMarkers.push(marker);requestAnimationFrame(()=>el.classList.add('visible'));
   }
  });
 }
 map.on('zoom',refreshMarkerClusters);map.on('move',refreshMarkerClusters);map.on('resize',refreshMarkerClusters);
-
 async function loadStations(){
  try{
   const {data,error}=await db.from('stations').select('*').is('archived_at',null).order('id',{ascending:true});
