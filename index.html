@@ -835,6 +835,40 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
  .nearestmenu{right:64px!important;width:min(220px,calc(100vw - 84px))!important}
  .notice{top:max(74px,calc(env(safe-area-inset-top) + 62px))!important}
 }
+
+/* Mobile station card: compact, no internal vertical scrolling (iOS + Android) */
+@media(max-width:600px){
+ .panel{
+  max-height:none!important;
+  overflow:visible!important;
+  overscroll-behavior:none!important;
+  -webkit-overflow-scrolling:auto!important;
+  padding:9px 13px max(10px,env(safe-area-inset-bottom))!important
+ }
+ .panel-handle{margin:0 auto 7px!important}
+ .panel .row{gap:8px!important}
+ .panel .station-card-icon{width:38px!important;height:38px!important;min-width:38px!important}
+ .panel .title{font-size:17px!important}
+ .panel .sub{font-size:10px!important;margin-top:1px!important}
+ .panel .stationmeta{margin:7px 0 2px!important}
+ .panel .statuspill,.panel .checkedpill{padding-top:5px!important;padding-bottom:5px!important;font-size:10px!important}
+ .panel .tools{margin:6px 0!important;gap:5px!important}
+ .panel .chip{padding:6px 8px!important;font-size:10.5px!important}
+ .panel .station-community{margin:5px 0!important}
+ .panel .station-community span,.panel .station-community button{padding:5px 7px!important;font-size:9.5px!important}
+ .panel .alertbox{padding:6px 9px!important;margin:6px 0!important}
+ .panel .alerthead{font-size:9.5px!important;margin-bottom:2px!important}
+ .panel .alerttext{font-size:11px!important;line-height:1.25!important}
+ .panel .alertdate{font-size:9px!important;margin-top:2px!important}
+ .panel .photo-strip-wrap{margin:4px 0!important}
+ .stationphotos{margin:4px 0!important}
+ .stationphotos.show{min-height:72px!important}
+ .stationphotoitem{width:96px!important;height:68px!important;min-width:96px!important;flex-basis:96px!important}
+ .panel .station-secondary-actions{margin-top:4px!important;gap:5px!important}
+ .panel .alertbtn{min-height:36px!important;padding:7px!important;margin-bottom:4px!important;font-size:10px!important}
+ .panel .actions{position:static!important;margin:2px 0 0!important;padding:0!important;background:none!important}
+ .panel .route,.panel .close{min-height:40px!important;padding:8px 10px!important}
+}
 </style>
 </head>
 <body>
