@@ -892,6 +892,12 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 .station-marker,.station-marker-pin,.station-marker-tool{transform:none!important}
 .station-marker,.station-marker-pin,.station-marker-tool{transition-property:box-shadow,border-color,filter,opacity!important}
 .station-marker:hover .station-marker-pin,.station-marker:active .station-marker-pin,.station-marker.active .station-marker-pin{transform:none!important}
+
+/* Station card state clarity */
+.panel button:disabled{opacity:.52;cursor:default;filter:saturate(.55)}
+.panel #favoriteStation{min-width:104px}
+.panel #favoriteStation:active{filter:brightness(1.15)}
+.panel .statuspill,.panel .checkedpill,.panel .chip{user-select:none}
 </style>
 </head>
 <body>
@@ -1688,7 +1694,7 @@ async function moderatePhoto(id,status,card){
 }
 
 
-document.getElementById('favoriteStation').onclick=()=>{if(!activeStation)return;let a=JSON.parse(localStorage.getItem('favorite_stations')||'[]');const i=a.findIndex(x=>String(x)===String(activeStation.id));if(i>=0)a.splice(i,1);else a.unshift(activeStation.id);localStorage.setItem('favorite_stations',JSON.stringify(a));document.getElementById('favoriteStation').textContent=i>=0?'☆ В избранное':'★ В избранном'};
+document.getElementById('favoriteStation').onclick=()=>{if(!activeStation)return;let a=JSON.parse(localStorage.getItem('favorite_stations')||'[]');const i=a.findIndex(x=>String(x)===String(activeStation.id));if(i>=0)a.splice(i,1);else a.unshift(activeStation.id);localStorage.setItem('favorite_stations',JSON.stringify(a));document.getElementById('favoriteStation').textContent=i>=0?'☆ В избранное':'★ В избранном';notice(i>=0?'Удалено из избранного':'★ Добавлено в избранное')};
 document.getElementById('adminDeleteStation').onclick=async()=>{
  if(!adminBypass||!activeStation)return;
  const s=activeStation;
