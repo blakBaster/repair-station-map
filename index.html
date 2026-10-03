@@ -1136,7 +1136,8 @@ function clearActiveStationMarker(){stationMarkers.forEach(m=>m.getElement().cla
 function refreshStationDistances(){}
 let stationReturnView=null;
 function renderStation(s){
- if(!panel.classList.contains('open'))stationReturnView={center:map.getCenter().toArray(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
+ const wasOpen=panel.classList.contains('open');
+ if(!wasOpen)stationReturnView={center:map.getCenter().toArray(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
  activeStation=s;setActiveStationMarker(s.id);
  const recent=JSON.parse(localStorage.getItem('recent_stations')||'[]').filter(x=>String(x)!==String(s.id));recent.unshift(s.id);localStorage.setItem('recent_stations',JSON.stringify(recent.slice(0,10)));
  const favs=JSON.parse(localStorage.getItem('favorite_stations')||'[]');document.getElementById('favoriteStation').textContent=favs.some(x=>String(x)===String(s.id))?'★ В избранном':'☆ В избранное';
@@ -1149,7 +1150,10 @@ function renderStation(s){
  stationTools.innerHTML='';
  s.equipment.forEach(t=>{const e=document.createElement('span');e.className='chip';e.innerHTML='<span class="chip-icon">'+equipmentIcon(String(t))+'</span><span>'+escapeHtml(String(t))+'</span>';stationTools.appendChild(e)});
  alertText.textContent='Загрузка…';alertDate.textContent='';
- panel.classList.add('open');panel.scrollTop=0;focusStationForCard(s);loadAlert(s.id);loadApprovedPhotos(s.id);loadStationConfidence(s);
+ panel.classList.add('open');panel.scrollTop=0;
+ // First open focuses the station; switching between already-open station cards does not keep dragging the map around.
+ if(!wasOpen)focusStationForCard(s);
+ loadAlert(s.id);loadApprovedPhotos(s.id);loadStationConfidence(s);
 }
 
 async function loadStationConfidence(s){
@@ -1244,11 +1248,10 @@ photoInput.onchange=async()=>{
 };
 function closeStationCard(){
  panel.classList.remove('open');clearActiveStationMarker();
+ activeStation=null;
  if(stationReturnView){
   map.easeTo({center:stationReturnView.center,zoom:stationReturnView.zoom,bearing:stationReturnView.bearing,pitch:stationReturnView.pitch,duration:480,easing:t=>1-Math.pow(1-t,3),essential:true});
   stationReturnView=null;
- }else if(activeStation){
-  map.easeTo({center:[activeStation.lng,activeStation.lat],zoom:Math.max(14.8,map.getZoom()-1.25),duration:420,easing:t=>1-Math.pow(1-t,3),essential:true});
  }
 }
 document.getElementById('close').onclick=closeStationCard;
