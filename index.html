@@ -850,9 +850,29 @@ function addMarker(s){
  const el=document.createElement('div');el.className='station-marker';el.dataset.stationId=s.id;const pumpOnly=s.has_pump===true&&s.has_tools!==true&&s.has_rack!==true;const markerIcon=pumpOnly?'💨':'🔧';el.classList.toggle('marker-pump-only',pumpOnly);el.innerHTML='<span class="station-marker-pin"><span class="station-marker-tool">'+markerIcon+'</span></span>';el.title=s.name;
  const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
- const openStation=e=>{if(e){e.preventDefault();e.stopPropagation()}ignoreMapClickUntil=Date.now()+500;renderStation(s)};
- el.addEventListener('click',openStation);
- el.addEventListener('touchend',openStation,{passive:false});
+ let markerTouchStart=null,markerTouchMoved=false,markerMultiTouch=false,suppressMarkerClickUntil=0;
+ el.addEventListener('touchstart',e=>{
+  markerMultiTouch=e.touches.length!==1;
+  markerTouchMoved=false;
+  const t=e.touches[0];
+  markerTouchStart=t?{x:t.clientX,y:t.clientY}:null;
+ },{passive:true});
+ el.addEventListener('touchmove',e=>{
+  if(e.touches.length!==1)markerMultiTouch=true;
+  const t=e.touches[0];
+  if(markerTouchStart&&t&&Math.hypot(t.clientX-markerTouchStart.x,t.clientY-markerTouchStart.y)>8)markerTouchMoved=true;
+ },{passive:true});
+ el.addEventListener('touchcancel',()=>{markerTouchStart=null;markerTouchMoved=true;markerMultiTouch=true;suppressMarkerClickUntil=Date.now()+500},{passive:true});
+ el.addEventListener('touchend',e=>{
+  const validTap=!markerMultiTouch&&!markerTouchMoved&&markerTouchStart&&e.changedTouches.length===1;
+  markerTouchStart=null;
+  if(!validTap){suppressMarkerClickUntil=Date.now()+500;return}
+  e.preventDefault();e.stopPropagation();ignoreMapClickUntil=Date.now()+500;suppressMarkerClickUntil=Date.now()+500;renderStation(s);
+ },{passive:false});
+ el.addEventListener('click',e=>{
+  if(Date.now()<suppressMarkerClickUntil)return;
+  e.preventDefault();e.stopPropagation();ignoreMapClickUntil=Date.now()+500;renderStation(s);
+ });
  stationMarkers.push(marker);
 }
 async function loadStations(){
