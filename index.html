@@ -769,6 +769,29 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 #adminLoggedIn>.adminlogout{margin:0 0 11px!important;padding:7px 10px!important;font-size:10px!important}
 #adminLoggedIn>.tabpane>h3{margin:8px 0 9px!important;font-size:13px!important;color:#dce6f2}
 @media(max-width:768px){#adminDashboard button{min-height:66px}}
+
+/* Admin content cards — unified with dashboard */
+#adminLoggedIn .tabpane{padding-top:2px}
+#adminLoggedIn .stationadminqueue,#adminLoggedIn .photoqueue{display:grid;gap:7px}
+#adminLoggedIn .stationadmincard,#adminLoggedIn .photocard,#adminLoggedIn .useractioncard{
+ margin:0!important;padding:11px 12px!important;border:1px solid #ffffff0e!important;border-radius:12px!important;
+ background:linear-gradient(180deg,#ffffff045,#ffffff025)!important;box-shadow:none!important
+}
+#adminLoggedIn .stationadminrow{gap:10px}
+#adminLoggedIn .stationadminmeta>b,#adminLoggedIn .photometa>b{font-size:12px;color:#eef4fb}
+#adminLoggedIn .stationadminequipment,#adminLoggedIn .stationadmincoords,#adminLoggedIn .photometa{font-size:10.5px!important;color:#8e9db0!important;line-height:1.5}
+#adminLoggedIn .stationadminbuttons,#adminLoggedIn .photobuttons{gap:5px!important}
+#adminLoggedIn .stationadminbuttons button,#adminLoggedIn .photobuttons button{padding:7px 9px!important;border-radius:8px!important;font-size:10px!important;font-weight:750!important}
+#adminLoggedIn .stationview,#adminLoggedIn .stationmove{background:#17283e!important;border:1px solid #ffffff0d!important;color:#e8f0fa!important}
+#adminLoggedIn .stationdelete,#adminLoggedIn .reject{background:#5b1f2a!important;border:1px solid #ff66752e!important;color:#ffd4d8!important}
+#adminLoggedIn .approve{background:#153b31!important;border:1px solid #67d5a52b!important;color:#bdf3d7!important}
+#adminLoggedIn .audittoolbar{margin:5px 0 9px}
+#adminLoggedIn .auditclear{padding:7px 9px!important;border-radius:8px!important;font-size:10px!important}
+@media(max-width:700px){
+ #adminLoggedIn .stationadminrow{display:grid!important}
+ #adminLoggedIn .stationadminbuttons{display:grid!important;grid-template-columns:1fr 1fr}
+ #adminLoggedIn .stationadminbuttons button{width:100%}
+}
 </style>
 </head>
 <body>
