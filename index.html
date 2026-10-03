@@ -915,20 +915,32 @@ let clusterMarkers=[],clusterFrame=0,lastClusterSignature='';
 function clearClusters(){clusterMarkers.forEach(m=>m.remove());clusterMarkers=[];lastClusterSignature=''}
 function refreshMarkerClusters(){
  cancelAnimationFrame(clusterFrame);clusterFrame=requestAnimationFrame(()=>{
-  const z=map.getZoom(),radius=z<11?118:z<12?104:z<13?90:z<14?76:64;
-  if(z>=14.65||stationMarkers.length<8){if(clusterMarkers.length)clearClusters();stationMarkers.forEach(m=>m.getElement().classList.remove('cluster-hidden'));return}
+  const z=map.getZoom();
+  if(z>=15.2||stationMarkers.length<4){clearClusters();stationMarkers.forEach(m=>m.getElement().classList.remove('cluster-hidden'));return}
+  // Deliberately generous visual radius: a cluster replaces the whole dense patch,
+  // not only markers whose centers almost touch.
+  const radius=z<10?230:z<11?205:z<12?178:z<13?150:z<14?120:88;
   const pts=stationMarkers.map(m=>({m,p:map.project(m.getLngLat())})),parent=pts.map((_,i)=>i);
   const find=i=>parent[i]===i?i:(parent[i]=find(parent[i]));const join=(a,b)=>{a=find(a);b=find(b);if(a!==b)parent[b]=a};
   for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].p.x-pts[j].p.x,dy=pts[i].p.y-pts[j].p.y;if(dx*dx+dy*dy<=radius*radius)join(i,j)}
   const byRoot=new Map();for(let i=0;i<pts.length;i++){const r=find(i);if(!byRoot.has(r))byRoot.set(r,[]);byRoot.get(r).push(pts[i].m)}
-  const clustered=[...byRoot.values()].filter(g=>g.length>1),signature=Math.round(z*12)+'|'+clustered.map(g=>g.map(m=>m.getElement().dataset.stationId).sort().join(',')).sort().join('|');
+  const clustered=[...byRoot.values()].filter(g=>g.length>1);
+  // Never allow a visible single marker to sit underneath / beside a cluster bubble.
+  // Absorb anything inside the bubble's visual safety zone, then rebuild groups.
+  let changed=true;
+  while(changed){changed=false;
+   for(const g of clustered){let sx=0,sy=0;g.forEach(m=>{const p=map.project(m.getLngLat());sx+=p.x;sy+=p.y});sx/=g.length;sy/=g.length;
+    for(const pt of pts){if(g.includes(pt.m))continue;const dx=pt.p.x-sx,dy=pt.p.y-sy;if(dx*dx+dy*dy<(radius*.92)*(radius*.92)){g.push(pt.m);changed=true}}
+   }
+   for(let a=0;a<clustered.length;a++)for(let b=a+1;b<clustered.length;b++){if(clustered[a].some(m=>clustered[b].includes(m))){clustered[a]=[...new Set([...clustered[a],...clustered[b]])];clustered.splice(b--,1);changed=true}}
+  }
+  const signature=Math.round(z*10)+'|'+clustered.map(g=>g.map(m=>m.getElement().dataset.stationId).sort().join(',')).sort().join('|');
   if(signature===lastClusterSignature)return;lastClusterSignature=signature;
   const hidden=new Set(clustered.flat());stationMarkers.forEach(m=>m.getElement().classList.toggle('cluster-hidden',hidden.has(m)));
-  clusterMarkers.forEach(m=>{const el=m.getElement();el.classList.add('leaving');setTimeout(()=>m.remove(),110)});clusterMarkers=[];
-  for(const group of clustered){
-   let sx=0,sy=0;group.forEach(m=>{const p=map.project(m.getLngLat());sx+=p.x;sy+=p.y});const center=map.unproject([sx/group.length,sy/group.length]);
+  clusterMarkers.forEach(m=>m.remove());clusterMarkers=[];
+  for(const group of clustered){let sx=0,sy=0;group.forEach(m=>{const p=map.project(m.getLngLat());sx+=p.x;sy+=p.y});const center=map.unproject([sx/group.length,sy/group.length]);
    const el=document.createElement('button');el.className='stationcluster';el.innerHTML='<span>'+group.length+'</span>';el.setAttribute('aria-label',group.length+' станций');
-   el.onclick=e=>{e.stopPropagation();const bounds=new maplibregl.LngLatBounds();group.forEach(m=>bounds.extend(m.getLngLat()));map.fitBounds(bounds,{padding:105,maxZoom:15.7,duration:650,easing:t=>1-Math.pow(1-t,3)})};
+   el.onclick=e=>{e.stopPropagation();const bounds=new maplibregl.LngLatBounds();group.forEach(m=>bounds.extend(m.getLngLat()));map.fitBounds(bounds,{padding:120,maxZoom:16,duration:700,easing:t=>1-Math.pow(1-t,3)})};
    const marker=new maplibregl.Marker({element:el}).setLngLat(center).addTo(map);clusterMarkers.push(marker);requestAnimationFrame(()=>el.classList.add('visible'));
   }
  });
