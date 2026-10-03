@@ -869,6 +869,25 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
  .panel .actions{position:static!important;margin:2px 0 0!important;padding:0!important;background:none!important}
  .panel .route,.panel .close{min-height:40px!important;padding:8px 10px!important}
 }
+
+/* Final map + station-card polish */
+.station-marker{transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,filter .16s ease}
+.station-marker:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 7px 20px #0008}
+.station-marker.active{transform:scale(1.13);border-color:#7dd3fc;box-shadow:0 0 0 5px #38bdf826,0 7px 22px #0009;filter:brightness(1.08)}
+.panel.open{animation:stationCardIn .18s cubic-bezier(.2,.8,.2,1)}
+@keyframes stationCardIn{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:none}}
+.panel .route,.panel .close,.panel .alertbtn,.panel .station-community button{transition:transform .12s ease,background .12s ease,filter .12s ease}
+.panel .route:active,.panel .close:active,.panel .alertbtn:active,.panel .station-community button:active{transform:scale(.975)}
+.panel .route:hover,.panel .close:hover,.panel .alertbtn:hover,.panel .station-community button:hover{filter:brightness(1.08)}
+@media(max-width:600px){
+ .station-marker:hover{transform:none}
+ .station-marker.active{transform:scale(1.1)}
+ .panel.open{animation-duration:.15s}
+}
+@media(prefers-reduced-motion:reduce){
+ .panel.open{animation:none}
+ .station-marker,.panel .route,.panel .close,.panel .alertbtn,.panel .station-community button{transition:none!important}
+}
 </style>
 </head>
 <body>
