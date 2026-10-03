@@ -887,6 +887,11 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
  .panel.open{animation:none}
  .station-marker,.panel .route,.panel .close,.panel .alertbtn,.panel .station-community button{transition:none!important}
 }
+
+/* Marker stability guard: never animate transforms inside MapLibre markers */
+.station-marker,.station-marker-pin,.station-marker-tool{transform:none!important}
+.station-marker,.station-marker-pin,.station-marker-tool{transition-property:box-shadow,border-color,filter,opacity!important}
+.station-marker:hover .station-marker-pin,.station-marker:active .station-marker-pin,.station-marker.active .station-marker-pin{transform:none!important}
 </style>
 </head>
 <body>
