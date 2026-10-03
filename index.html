@@ -663,6 +663,34 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 #myActionsModal #myActionsList .userbuttons button{padding:7px 9px;border-radius:8px;font-size:10.5px;background:#17283e;color:#e8f0fa;border:1px solid #ffffff0d}
 #myActionsModal #myActionsList .userbuttons button:last-child{background:#ffffff08;color:#cbd5e1}
 @media(max-width:600px){#myActionsModal .userbox{width:calc(100% - 16px);padding:12px}#myActionsModal .userhead{top:-12px;margin:-12px -12px 10px;padding:13px 12px 10px}#myActionsModal .profileextras{grid-template-columns:1fr}#myActionsModal #leaderboardOpen,#myActionsModal .leaderboardbox{grid-column:1}#myActionsModal .summarynav{grid-template-columns:repeat(2,1fr)}}
+
+/* My Actions refinement pass */
+#myActionsModal .userbox{width:min(700px,calc(100% - 24px))}
+#myActionsModal .profilecard{background:linear-gradient(180deg,#ffffff055,#ffffff025);border-color:#ffffff0d}
+#myActionsModal .profiletop{padding-bottom:3px}
+#myActionsModal .profilename{font-size:19px;letter-spacing:-.02em}
+#myActionsModal .profilestats{font-size:11.5px;color:#aab6c6}
+#myActionsModal .profilestats b{color:#f4f7fb}
+#myActionsModal .profileachievements{margin-top:7px;padding-top:8px;border-top:1px solid #ffffff0a}
+#myActionsModal .achievementchips{gap:5px}
+#myActionsModal .achievementchip{background:#ffffff045;border-color:#ffffff0d}
+#myActionsModal .achievementprogress{gap:6px;margin-top:7px}
+#myActionsModal .achprog{background:#ffffff035;border-color:#ffffff0d}
+#myActionsModal .profilebadges{padding-top:4px;color:#aeb9c8}
+#myActionsModal #leaderboardOpen{display:flex;align-items:center;gap:7px;min-height:42px}
+#myActionsModal #leaderboardOpen small{margin-left:2px;color:#718096;font-weight:500}
+#myActionsModal .profileextras>div:not(.leaderboardbox){height:88px;overflow:hidden}
+#myActionsModal .mini-list{padding-bottom:4px;overflow-x:auto;scrollbar-width:thin}
+#myActionsModal .summarynav button{background:linear-gradient(180deg,#ffffff055,#ffffff025)!important;color:#9ba9bb!important;border-color:#ffffff0e!important}
+#myActionsModal .summarynav button.active{background:linear-gradient(180deg,#19304c,#12243a)!important;color:#f4f7fb!important;border-color:#4f91d94d!important}
+#myActionsModal .summarynav button b{color:#f4f7fb!important}
+#myActionsModal .summarynav button small{color:#8392a5!important}
+#myActionsModal .summarynav button.active small{color:#a9b9cc!important}
+#myActionsModal #myActionsList .useritem{position:relative;background:linear-gradient(180deg,#ffffff045,#ffffff025);border-color:#ffffff0e}
+#myActionsModal #myActionsList .useritem:hover{border-color:#ffffff18;background:#ffffff055}
+#myActionsModal #myActionsList .userbuttons button{font-weight:700}
+#myActionsModal #myActionsList .userbuttons button:last-child:not(:only-child){background:#ffffff055;color:#b9c4d2}
+@media(max-width:600px){#myActionsModal .profileextras>div:not(.leaderboardbox){height:auto;min-height:76px}#myActionsModal .profilestats{grid-template-columns:1fr 1fr}#myActionsModal .profiledates{grid-column:1/-1}}
 </style>
 </head>
 <body>
