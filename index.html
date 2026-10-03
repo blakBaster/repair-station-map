@@ -23,7 +23,7 @@
 
 
 .station-community{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:9px 0}.station-community span{font-size:11px;color:#aebbd0;background:#ffffff06;border:1px solid #ffffff0d;padding:7px 9px;border-radius:9px}.station-community button{border:1px solid #ffffff12;background:#ffffff07;color:#eef5ff;border-radius:9px;padding:7px 9px;font-size:11px;cursor:pointer}.admin-station-delete{display:none!important;margin-left:auto!important;width:30px;height:30px;padding:0!important;place-items:center;color:#ff9b9b!important;border-color:#ff6b6b26!important;background:#ff5c5c0a!important}.admin-station-delete.show{display:grid!important}.profileextras{display:grid;gap:9px;margin:10px 0;padding:10px;border:1px solid #ffffff10;border-radius:13px;background:#ffffff035}.mini-list{display:flex;gap:6px;overflow-x:auto;margin-top:6px}.mini-list button{white-space:nowrap;font-size:11px}.leaderboardbox{display:none;gap:5px}.leaderboardbox.open{display:grid}.leaderrow{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;padding:10px;border-radius:11px;background:#ffffff05;font-size:11px}.leaderrow span{display:grid;gap:2px}.leaderrow small{color:#8796aa;font-weight:500}.leaderplace{font-size:17px}.admindashboard{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:9px 0}.admindashboard button{padding:10px;border:1px solid #ffffff10;border-radius:11px;background:#ffffff05;color:#9eacc0;font-size:10px;text-align:left;cursor:pointer}.admindashboard button:hover{background:#ffffff09}.admindashboard b{display:block;color:#fff;font-size:16px;margin-bottom:2px}.admindashboard small{display:block;margin-top:3px;color:#718096}@media(max-width:768px){.statusfilter{right:12px;top:max(292px,calc(env(safe-area-inset-top) + 280px))}.statusfiltermenu{right:68px;top:max(292px,calc(env(safe-area-inset-top) + 280px))}.admindashboard{grid-template-columns:repeat(2,1fr)}}
-.stationcluster{width:40px;height:40px;border-radius:50%;border:1px solid #8fc5f055;background:#122235ed;color:#eaf5ff;font-weight:800;box-shadow:0 5px 18px #0008,0 0 14px #5ca9e62c;cursor:pointer}
+.station-marker{transition:opacity .16s ease!important}.station-marker.cluster-hidden{opacity:0;pointer-events:none}.stationcluster{width:42px;height:42px;padding:0;border-radius:50%;border:1px solid #8fc5f05c;background:linear-gradient(145deg,#182b40f5,#0c1929f5);color:#eef8ff;font:800 13px/1 system-ui;box-shadow:0 7px 20px #0008,0 0 0 1px #b9dcff10,0 0 12px #5ca9e62a,inset 0 1px 1px #e0f2ff1c;backdrop-filter:blur(10px);cursor:pointer;opacity:0;transform:scale(.78);transition:opacity .16s ease,transform .2s cubic-bezier(.2,.8,.2,1),border-color .16s ease,box-shadow .16s ease}.stationcluster.visible{opacity:1;transform:scale(1)}.stationcluster.leaving{opacity:0;transform:scale(.86);pointer-events:none}.stationcluster span{display:grid;place-items:center;width:30px;height:30px;margin:auto;border-radius:50%;background:#ffffff07;border:1px solid #ffffff0a}.stationcluster:hover{border-color:#9fd2fa88;box-shadow:0 8px 22px #0009,0 0 16px #65b5f43b;transform:scale(1.055)}@media(max-width:768px){.stationcluster{width:40px;height:40px}.stationcluster span{width:29px;height:29px}}
 /* Nearest equipment chooser */
 .nearestmenu{position:fixed;z-index:13;right:70px;top:130px;display:none;width:220px;padding:6px;background:#0c1624f2;border:1px solid #ffffff16;border-radius:14px;box-shadow:0 18px 50px #0009;backdrop-filter:blur(16px)}.nearestmenu.open{display:grid;gap:4px}.nearestmenu button{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:10px;background:transparent;color:#fff;padding:9px 10px;text-align:left;cursor:pointer}.nearestmenu button:hover{background:#ffffff0b}.nearestmenu button>span{display:grid;gap:2px}.nearestmenu b{font-size:12px}.nearestmenu small{font-size:10px;color:#94a3b8}@media(max-width:768px){.nearestmenu{right:68px;top:max(124px,calc(env(safe-area-inset-top) + 112px))}}
 /* High-density polish pass: crisp UI at Retina/4K densities */
@@ -911,16 +911,29 @@ function addMarker(s){
  stationMarkers.push(marker);
 }
 
-let clusterMarkers=[];
+let clusterMarkers=[],clusterFrame=0,lastClusterSignature='';
+function clearClusters(){clusterMarkers.forEach(m=>m.remove());clusterMarkers=[];lastClusterSignature=''}
 function refreshMarkerClusters(){
- clusterMarkers.forEach(m=>m.remove());clusterMarkers=[];
- stationMarkers.forEach(m=>m.getElement().style.display='');
- if(map.getZoom()>=14||stationMarkers.length<8)return;
- const groups=new Map();
- for(const m of stationMarkers){const p=map.project(m.getLngLat()),key=Math.floor(p.x/90)+':'+Math.floor(p.y/90);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(m)}
- for(const group of groups.values()){if(group.length<2)continue;group.forEach(m=>m.getElement().style.display='none');const lng=group.reduce((a,m)=>a+m.getLngLat().lng,0)/group.length,lat=group.reduce((a,m)=>a+m.getLngLat().lat,0)/group.length;const el=document.createElement('button');el.className='stationcluster';el.textContent=group.length;el.onclick=e=>{e.stopPropagation();map.easeTo({center:[lng,lat],zoom:Math.min(15,map.getZoom()+2),duration:420})};clusterMarkers.push(new maplibregl.Marker({element:el}).setLngLat([lng,lat]).addTo(map))}
+ cancelAnimationFrame(clusterFrame);clusterFrame=requestAnimationFrame(()=>{
+  const z=map.getZoom(),cell=z<11?150:z<12?126:z<13?106:z<14?86:68;
+  if(z>=14.65||stationMarkers.length<8){if(clusterMarkers.length)clearClusters();stationMarkers.forEach(m=>m.getElement().classList.remove('cluster-hidden'));return}
+  const groups=new Map();
+  for(const m of stationMarkers){const p=map.project(m.getLngLat()),key=Math.round(p.x/cell)+':'+Math.round(p.y/cell);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(m)}
+  const clustered=[...groups.values()].filter(g=>g.length>1);
+  const signature=Math.round(z*10)+'|'+clustered.map(g=>g.map(m=>m.getElement().dataset.stationId).sort().join(',')).sort().join('|');
+  if(signature===lastClusterSignature)return;lastClusterSignature=signature;
+  const hidden=new Set(clustered.flat());
+  stationMarkers.forEach(m=>m.getElement().classList.toggle('cluster-hidden',hidden.has(m)));
+  clusterMarkers.forEach(m=>{const el=m.getElement();el.classList.add('leaving');setTimeout(()=>m.remove(),150)});clusterMarkers=[];
+  for(const group of clustered){
+   const lng=group.reduce((a,m)=>a+m.getLngLat().lng,0)/group.length,lat=group.reduce((a,m)=>a+m.getLngLat().lat,0)/group.length;
+   const el=document.createElement('button');el.className='stationcluster';el.innerHTML='<span>'+group.length+'</span>';el.setAttribute('aria-label',group.length+' станций');
+   el.onclick=e=>{e.stopPropagation();const bounds=new maplibregl.LngLatBounds();group.forEach(m=>bounds.extend(m.getLngLat()));map.fitBounds(bounds,{padding:90,maxZoom:15.6,duration:650,easing:t=>1-Math.pow(1-t,3)})};
+   const marker=new maplibregl.Marker({element:el}).setLngLat([lng,lat]).addTo(map);clusterMarkers.push(marker);requestAnimationFrame(()=>el.classList.add('visible'));
+  }
+ });
 }
-map.on('zoomend',refreshMarkerClusters);map.on('moveend',refreshMarkerClusters);
+map.on('zoom',refreshMarkerClusters);map.on('move',refreshMarkerClusters);map.on('resize',refreshMarkerClusters);
 
 async function loadStations(){
  try{
