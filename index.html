@@ -915,6 +915,27 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 #myActionsModal .specialachgrid b{font-size:10.5px}
 #myActionsModal .specialachgrid small{display:block;margin-top:3px;color:#8190a3;font-size:9px;line-height:1.3}
 @media(max-width:600px){#myActionsModal .specialachgrid{grid-template-columns:1fr}}
+/* Station history */
+.station-history-open{width:100%;margin:2px 0 6px;border:1px solid #ffffff10;border-radius:11px;padding:9px 10px;background:#ffffff05;color:#b8c6d8;font-size:10.5px;font-weight:700;cursor:pointer}
+.station-history-open:hover{background:#ffffff0a}
+.station-history-modal{position:fixed;z-index:47;inset:0;background:#030712b8;display:none;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(6px)}
+.station-history-modal.open{display:flex}
+.station-history-box{width:min(520px,100%);max-height:min(720px,88vh);overflow:hidden;display:flex;flex-direction:column;background:#111827;border:1px solid #ffffff14;border-radius:20px;box-shadow:0 24px 70px #0009}
+.station-history-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px 12px;border-bottom:1px solid #ffffff0c}
+.station-history-head h2{font-size:17px;margin:0}.station-history-head small{display:block;margin-top:3px;color:#7f8da1;font-size:10px}
+.station-history-head button{width:38px;height:38px;border:1px solid #ffffff10;border-radius:12px;background:#ffffff06;color:#fff;font-size:17px;cursor:pointer}
+.station-history-summary{padding:10px 16px;color:#8f9caf;font-size:10.5px;border-bottom:1px solid #ffffff09}
+.station-history-list{overflow-y:auto;padding:12px 16px 18px;-webkit-overflow-scrolling:touch}
+.history-item{position:relative;padding:0 0 15px 31px}
+.history-item:last-child{padding-bottom:0}
+.history-item:before{content:'';position:absolute;left:11px;top:22px;bottom:-2px;width:1px;background:#ffffff10}.history-item:last-child:before{display:none}
+.history-dot{position:absolute;left:0;top:1px;width:23px;height:23px;display:grid;place-items:center;border-radius:8px;background:#1a2940;border:1px solid #ffffff10;font-size:11px}
+.history-title{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:11.5px;font-weight:750;color:#dbe5f2}
+.history-title time{flex:none;color:#718096;font-size:9px;font-weight:500}
+.history-message{margin-top:3px;color:#98a6b8;font-size:10.5px;line-height:1.35}
+.history-status{display:inline-block;margin-top:5px;padding:3px 6px;border-radius:999px;background:#ffffff07;color:#aeb9c8;font-size:9px}
+.history-empty{padding:28px 8px;text-align:center;color:#718096;font-size:11px}
+@media(max-width:600px){.station-history-modal{align-items:flex-end;padding:0}.station-history-box{width:100%;max-height:82vh;border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}.station-history-open{min-height:36px;padding:7px!important;margin:2px 0 4px!important}}
 </style>
 </head>
 <body>
@@ -931,7 +952,8 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
  <div id="adminLoggedIn" style="display:none"><div class="admindashboard" id="adminDashboard"></div><div class="adminmsg" id="adminIdentity"></div><button class="adminlogout" id="adminLogout">Выйти</button><div class="tabpane active" data-admin-pane="published"><h3>🛠 Опубликованные станции <span class="tabcount" id="aPublishedLabel"></span></h3><div class="stationadminqueue" id="publishedStationQueue"></div></div><div class="tabpane" data-admin-pane="submissions"><h3>📍 Предложенные станции <span class="tabcount" id="aSubmissionLabel"></span></h3><div class="photoqueue" id="submissionQueue"></div></div><div class="tabpane" data-admin-pane="photos"><h3>📷 Предложенные фото <span class="tabcount" id="aPhotoLabel"></span></h3><div class="photoqueue" id="photoQueue"></div></div><div class="tabpane" data-admin-pane="devices"><h3>📱 Устройства <span class="tabcount" id="aDeviceLabel"></span></h3><div class="photoqueue" id="deviceQueue"></div></div><div class="tabpane" data-admin-pane="users"><h3>👥 Пользователи <span class="tabcount" id="aUserLabel"></span></h3><div class="photoqueue" id="userQueue"></div></div><div class="userdetailmodal" id="userDetailModal"><div class="userdetailcard"><button class="userdetailclose" id="userDetailClose">×</button><div id="userDetailBody"></div></div></div><div class="tabpane" data-admin-pane="audit"><h3>📜 Журнал действий <span class="tabcount" id="aAuditLabel"></span></h3><div class="audittoolbar"><button class="auditclear" id="auditClearOpen">🧹 Очистить журнал</button></div><div class="photoqueue" id="auditQueue"></div></div></div>
 </div></div>
 <div class="stationmovebox" id="stationMoveBox"><b>📍 Переместить Repair Station</b><p>Передвинь карту так, чтобы центральный пин стоял точно на станции.</p><div class="stationmoveactions"><button class="stationmovecancel" id="stationMoveCancel">Отмена</button><button class="stationmovesave" id="stationMoveSave">Сохранить точку</button></div></div>
-<div class="panel" id="panel"><div class="panel-handle" aria-hidden="true"></div><div class="row"><div class="station-card-icon"><img src="./icons/repair-station-r4.svg" alt=""></div><div class="station-card-copy"><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div><div class="sub" id="stationDistance"></div></div></div><div class="stationmeta"><span class="statuspill unknown" id="stationStatus">⚪ Статус неизвестен</span><span class="checkedpill" id="lastChecked">Проверка не указана</span></div><div class="tools" id="stationTools"></div><div class="station-community"><span id="stationReliability">Надёжность: —</span><button id="favoriteStation">☆ В избранное</button><button id="confirmWorking">✓ Всё работает</button><button id="adminDeleteStation" class="admin-station-delete" title="Полностью удалить станцию">🗑</button></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><div class="photo-strip-wrap"><div class="stationphotos" id="stationPhotos"></div><button class="photo-strip-nav photo-strip-prev" id="photoStripPrev" aria-label="Предыдущие фотографии">‹</button><button class="photo-strip-nav photo-strip-next" id="photoStripNext" aria-label="Следующие фотографии">›</button></div><div class="station-secondary-actions"><button class="alertbtn" id="alertBtn">💬 Сообщить о состоянии</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button></div><input id="photoInput" type="file" accept="image/*" multiple hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
+<div class="station-history-modal" id="stationHistoryModal"><div class="station-history-box"><div class="station-history-head"><div><h2>🕘 История станции</h2><small id="stationHistoryName"></small></div><button id="stationHistoryClose" aria-label="Закрыть">✕</button></div><div class="station-history-summary" id="stationHistorySummary"></div><div class="station-history-list" id="stationHistoryList"></div></div></div>
+<div class="panel" id="panel"><div class="panel-handle" aria-hidden="true"></div><div class="row"><div class="station-card-icon"><img src="./icons/repair-station-r4.svg" alt=""></div><div class="station-card-copy"><div class="title" id="stationTitle">Repair Station</div><div class="sub" id="stationCoords"></div><div class="sub" id="stationDistance"></div></div></div><div class="stationmeta"><span class="statuspill unknown" id="stationStatus">⚪ Статус неизвестен</span><span class="checkedpill" id="lastChecked">Проверка не указана</span></div><div class="tools" id="stationTools"></div><div class="station-community"><span id="stationReliability">Надёжность: —</span><button id="favoriteStation">☆ В избранное</button><button id="confirmWorking">✓ Всё работает</button><button id="adminDeleteStation" class="admin-station-delete" title="Полностью удалить станцию">🗑</button></div><div class="alertbox"><div class="alerthead">⚠️ Последнее сообщение</div><div class="alerttext" id="alertText">Сообщений пока нет</div><div class="alertdate" id="alertDate"></div></div><div class="photo-strip-wrap"><div class="stationphotos" id="stationPhotos"></div><button class="photo-strip-nav photo-strip-prev" id="photoStripPrev" aria-label="Предыдущие фотографии">‹</button><button class="photo-strip-nav photo-strip-next" id="photoStripNext" aria-label="Следующие фотографии">›</button></div><div class="station-secondary-actions"><button class="alertbtn" id="alertBtn">💬 Сообщить о состоянии</button><button class="alertbtn" id="photoBtn">📷 Предложить фото станции</button></div><button class="station-history-open" id="stationHistoryOpen">🕘 История станции</button><input id="photoInput" type="file" accept="image/*" multiple hidden><div class="actions"><button class="route" id="route">Построить маршрут</button><button class="close" id="close">✕</button></div></div>
 <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1248,6 +1270,32 @@ function renderStation(s){
  alertText.textContent='Загрузка…';alertDate.textContent='';
  panel.classList.add('open');panel.scrollTop=0;focusStationForCard(s);loadAlert(s.id);loadApprovedPhotos(s.id);loadStationConfidence(s);
 }
+
+function historyDate(v){const d=new Date(v);if(Number.isNaN(d.getTime()))return '';return d.toLocaleString('ru-RU',{day:'numeric',month:'short',year:d.getFullYear()!==new Date().getFullYear()?'numeric':undefined,hour:'2-digit',minute:'2-digit'})}
+function historyMeta(e){
+ if(e.type==='created')return ['📍','Станция появилась на карте'];
+ if(e.type==='confirmation')return ['✓','Работу станции подтвердили'];
+ if(e.type==='photo')return ['📷','Добавлено фото'];
+ if(e.type==='submission_approved')return ['✨','Станция прошла модерацию'];
+ if(e.type==='report'){const s=statusInfo(e.status);return [e.status==='broken'?'🔴':e.status==='partial'?'🟡':'🟢','Сообщение о состоянии']}
+ return ['•','Событие'];
+}
+async function openStationHistory(){
+ if(!activeStation)return;
+ const modal=document.getElementById('stationHistoryModal'),list=document.getElementById('stationHistoryList'),summary=document.getElementById('stationHistorySummary');
+ document.getElementById('stationHistoryName').textContent=stationTitle.textContent;list.innerHTML='<div class="history-empty">Загрузка истории…</div>';summary.textContent='';modal.classList.add('open');
+ const stationId=activeStation.id,{data,error}=await db.rpc('get_station_history',{p_station_id:stationId});
+ if(!modal.classList.contains('open')||!activeStation||String(activeStation.id)!==String(stationId))return;
+ if(error){console.error('get_station_history:',error);list.innerHTML='<div class="history-empty">Не удалось загрузить историю</div>';return}
+ const rows=Array.isArray(data)?data:[];
+ const counts={report:0,confirmation:0,photo:0};rows.forEach(x=>{if(counts[x.type]!=null)counts[x.type]++});
+ summary.textContent=rows.length?('✓ '+counts.confirmation+' проверок · 💬 '+counts.report+' сообщений · 📷 '+counts.photo+' фото'):'Событий пока нет';
+ if(!rows.length){list.innerHTML='<div class="history-empty">История этой станции пока пустая</div>';return}
+ list.innerHTML=rows.map(e=>{const [icon,title]=historyMeta(e),status=e.type==='report'?statusInfo(e.status)[1]:'';return '<div class="history-item"><span class="history-dot">'+icon+'</span><div class="history-title"><span>'+escapeHtml(title)+'</span><time>'+escapeHtml(historyDate(e.created_at))+'</time></div><div class="history-message">'+escapeHtml(e.message||'')+'</div>'+(status?'<span class="history-status">'+escapeHtml(status)+'</span>':'')+'</div>'}).join('');
+}
+document.getElementById('stationHistoryOpen').onclick=openStationHistory;
+document.getElementById('stationHistoryClose').onclick=()=>document.getElementById('stationHistoryModal').classList.remove('open');
+document.getElementById('stationHistoryModal').onclick=e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')};
 
 async function loadStationConfidence(s){
  const el=document.getElementById('stationReliability');if(!el)return;
