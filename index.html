@@ -1102,7 +1102,7 @@ function focusStationForCard(s){
    // On mobile, keep the selected station just above the card so the relationship is obvious.
    const cardHeight=Math.min(panel.getBoundingClientRect().height||0,window.innerHeight*.72);
    const visibleMapHeight=Math.max(150,window.innerHeight-cardHeight);
-   const targetY=Math.max(92,visibleMapHeight-18);
+   const targetY=Math.max(92,visibleMapHeight-8);
    const currentPoint=map.project([s.lng,s.lat]);
    const centerPoint=map.project(map.getCenter());
    const dx=currentPoint.x-window.innerWidth/2;
