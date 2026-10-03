@@ -936,6 +936,9 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 .history-status{display:inline-block;margin-top:5px;padding:3px 6px;border-radius:999px;background:#ffffff07;color:#aeb9c8;font-size:9px}
 .history-empty{padding:28px 8px;text-align:center;color:#718096;font-size:11px}
 @media(max-width:600px){.station-history-modal{align-items:flex-end;padding:0}.station-history-box{width:100%;max-height:82vh;border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}.station-history-open{min-height:36px;padding:7px!important;margin:2px 0 4px!important}}
+/* Stability pass: marker positioning must never be animated with transforms */
+.station-marker,.station-marker:hover,.station-marker:active,.station-marker.active{transform:none!important}
+.station-marker-pin,.station-marker:hover .station-marker-pin,.station-marker:active .station-marker-pin,.station-marker.active .station-marker-pin{transform:none!important;transition:border-color .16s ease,box-shadow .16s ease,filter .16s ease!important}
 </style>
 </head>
 <body>
