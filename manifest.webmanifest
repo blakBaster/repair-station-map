@@ -1,24 +1,26 @@
 {
+  "id": "./",
   "name": "Repair Station Map",
   "short_name": "Repair Station",
   "description": "Карта общественных велоремонтных станций",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone"],
   "background_color": "#111827",
   "theme_color": "#111827",
   "lang": "ru",
   "orientation": "any",
   "icons": [
     {
-      "src": "./icons/repair-station-r4.svg",
-      "sizes": "any",
+      "src": "./icons/repair-station-mobile.svg",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "./icons/repair-station-r4.svg",
-      "sizes": "any",
+      "src": "./icons/repair-station-mobile.svg",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
