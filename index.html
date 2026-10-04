@@ -929,6 +929,12 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
  .name-card input,.adminform input{font-size:16px}
  .panel{overflow:visible!important;max-height:none!important}
 }
+/* Admin design alignment — dashboard, submissions, audit and user detail */
+.admindashboard{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:14px 0 12px}.admindashboard button{min-height:76px;padding:11px 12px;border-radius:14px;background:linear-gradient(180deg,#ffffff065,#ffffff035);border:1px solid #ffffff10;color:#9eacc0}.admindashboard button.active{background:linear-gradient(180deg,#17304a,#102238);border-color:#5aa8ee66;box-shadow:0 10px 26px #0004,inset 0 1px 0 #ffffff0c}.admindashboard b{font-size:18px;letter-spacing:-.02em}.admindashboard small{font-size:10.5px;line-height:1.25}
+#submissionQueue .photocard{padding:13px 14px!important;border-radius:15px!important;background:linear-gradient(180deg,#172334,#111c2b)!important;border-color:#ffffff13!important;box-shadow:inset 0 1px 0 #ffffff06,0 8px 24px #0002!important}#submissionQueue .photometa{color:#9cabc0!important;line-height:1.55!important}#submissionQueue .photometa b{font-size:14px!important;color:#f5f7fb!important}#submissionQueue .photobuttons{justify-content:flex-end;display:flex!important}#submissionQueue .approve,#submissionQueue .reject{width:auto;min-width:100px}
+#auditQueue .photocard{padding:13px!important;border-radius:15px!important;background:linear-gradient(180deg,#172334,#111c2b)!important;border-color:#ffffff13!important}#auditQueue .photometa{line-height:1.55!important}#auditQueue .photocard>img{max-height:230px;object-fit:contain;background:#091321;border-radius:11px}#auditQueue .photobuttons{padding-top:3px;border-top:1px solid #ffffff0b}
+.userdetailcard{background:linear-gradient(180deg,#111d2d,#0d1826)!important}.userdetailhead{padding-bottom:13px;border-bottom:1px solid #ffffff0d}.userdetailsection{border-top:0!important;padding:13px 0!important;margin:0!important;border-bottom:1px solid #ffffff0d}.userdetailach{display:flex;gap:6px;flex-wrap:wrap}.userdetailach span{border:1px solid #ffffff12!important;background:#ffffff055!important;border-radius:999px!important;color:#dce5f0!important}.useractivitytabs{border-top:0!important;margin-top:10px!important}.useractioncard{background:linear-gradient(180deg,#ffffff055,#ffffff025)!important;border-color:#ffffff10!important;border-radius:13px!important;padding:11px 12px!important}.useractionstatus{margin-top:4px;font-weight:700}.useractiontext{margin:6px 0;color:#dce5f0}.userdetailmuted{color:#8998ad!important}
+@media(max-width:900px){.admindashboard{grid-template-columns:repeat(3,1fr)}}@media(max-width:600px){.admindashboard{grid-template-columns:repeat(2,1fr)}.admindashboard button{min-height:68px}.userdetailcard{padding:14px!important}}
 </style>
 </head>
 <body>
@@ -1721,7 +1727,7 @@ async function loadPendingSubmissions(){
   const eq=[s.has_tools?'🛠 Инструменты':'',s.has_rack?'🚲 Стойка':'',s.has_pump?'💨 Насос':''].filter(Boolean).join(' · ');
   let nearest=Infinity;for(const st of stations)nearest=Math.min(nearest,distanceMeters(Number(s.lat),Number(s.lng),st.lat,st.lng));
   const sender=s.device_id?(s.device_id.length>18?s.device_id.slice(0,8)+'…'+s.device_id.slice(-6):s.device_id):null;
-  meta.innerHTML='<b>Repair Station #'+s.id+'</b><br>📍 '+Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+'<br>'+eq+(Number.isFinite(nearest)?'<br>📏 До ближайшей станции: '+formatDistance(nearest):'')+(sender?'<br>👤 Device: '+escapeHtml(sender):'<br>👤 Отправитель: старая заявка')+'<br>🕐 '+new Date(s.created_at).toLocaleString('ru-RU');
+  meta.innerHTML='<b>📍 Новая станция #'+s.id+'</b><br><span class="admincoord">Координаты: '++Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+'</span><br>'+eq+(Number.isFinite(nearest)?'<br>📏 До ближайшей станции: '+formatDistance(nearest):'')+(sender?'<br>👤 Device: '+escapeHtml(sender):'<br>👤 Отправитель: старая заявка')+'<br>🕐 '+new Date(s.created_at).toLocaleString('ru-RU');
   card.appendChild(meta);
   await addSenderControls(card,s.device_id);
   const show=document.createElement('button');show.className='adminlogout';show.style.margin='10px 0';show.textContent='📍 Показать на карте';show.onclick=()=>{
