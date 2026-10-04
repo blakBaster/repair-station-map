@@ -1511,9 +1511,13 @@ async function loadMyAchievementProgress(){const {data:p,error}=await db.rpc('ge
 async function loadMyProfileStats(){const {data,error}=await db.rpc('get_my_profile_stats',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile_stats:',error);return}const s=Array.isArray(data)?data[0]:data;if(!s)return;document.getElementById('psReports').textContent=Number(s.reports_total||0);document.getElementById('psPhotos').textContent=Number(s.photos_total||0);document.getElementById('psPhotosApproved').textContent=Number(s.photos_approved||0);document.getElementById('psStations').textContent=Number(s.stations_total||0);document.getElementById('psStationsApproved').textContent=Number(s.stations_approved||0);document.getElementById('psSince').textContent=profileDate(s.active_since);document.getElementById('psLast').textContent=profileDate(s.last_activity,true)}
 async function loadMyProfile(){const {data,error}=await db.rpc('get_my_profile',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile:',error);return null}myProfile=Array.isArray(data)?(data[0]||null):data;renderProfile();return myProfile}
 function openNameModal(){nameInput.value=myProfile?.display_name||'';nameModal.classList.add('open');setTimeout(()=>nameInput.focus(),80)}
-async function saveDisplayName(){const name=nameInput.value.trim();if(name.length<2){notice('Имя должно содержать минимум 2 символа');return}if(name.length>30){notice('Имя слишком длинное');return}document.getElementById('nameSave').disabled=true;const {data,error}=await db.rpc('set_my_display_name',{p_device_id:DEVICE_ID,p_display_name:name,p_device_secret:DEVICE_SECRET});document.getElementById('nameSave').disabled=false;if(error){console.error('set_my_display_name:',error);notice('Не удалось сохранить имя: '+(error.message||''));return}localStorage.removeItem('repair_station_name_prompt_skipped');nameModal.classList.remove('open');await loadMyProfile();notice('Имя сохранено')}
-document.getElementById('nameSave').onclick=saveDisplayName;nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')saveDisplayName()});document.getElementById('nameSkip').onclick=()=>{localStorage.setItem('repair_station_name_prompt_skipped','1');nameModal.classList.remove('open')};document.getElementById('profileEdit').onclick=openNameModal;
-async function initUserProfile(){await registerDevice();const p=await loadMyProfile();if(!p?.display_name&&!localStorage.getItem('repair_station_name_prompt_skipped'))openNameModal()}
+async function saveDisplayName(){const name=nameInput.value.trim();if(name.length<2){notice('Имя должно содержать минимум 2 символа');return}if(name.length>30){notice('Имя слишком длинное');return}document.getElementById('nameSave').disabled=true;const {data,error}=await db.rpc('set_my_display_name',{p_device_id:DEVICE_ID,p_display_name:name,p_device_secret:DEVICE_SECRET});document.getElementById('nameSave').disabled=false;if(error){console.error('set_my_display_name:',error);notice('Не удалось сохранить имя: '+(error.message||''));return}localStorage.removeItem('repair_station_name_prompt_skipped');nameModal.classList.remove('open');await loadMyProfile();notice('Имя сохранено');maybeStartFirstGuide()}
+document.getElementById('nameSave').onclick=saveDisplayName;nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')saveDisplayName()});document.getElementById('nameSkip').onclick=()=>{localStorage.setItem('repair_station_name_prompt_skipped','1');nameModal.classList.remove('open');maybeStartFirstGuide()};document.getElementById('profileEdit').onclick=openNameModal;
+async function initUserProfile(){
+ await registerDevice();const p=await loadMyProfile();
+ if(!p?.display_name&&!localStorage.getItem('repair_station_name_prompt_skipped'))openNameModal();
+ else maybeStartFirstGuide();
+}
 setTimeout(initUserProfile,500);
 async function loadMyActions(){
  await Promise.all([loadMyProfile(),loadMyProfileStats(),loadMyBadges(),loadMyReputation(),loadMyAchievements(),loadMyAchievementProgress()]);
@@ -1568,7 +1572,7 @@ const guideSteps=[
 let guideIndex=0,guideTarget=null,guideDemoPanel=false;
 const guideOverlay=document.getElementById('guideOverlay'),guideCard=document.getElementById('guideCard'),guideSpotlight=document.getElementById('guideSpotlight');
 function closeGuideConflicts(){
- document.querySelectorAll('.name-modal.open,.audit-clear-modal.open,.photo-delete-modal.open,.lightbox.open,.usermodal.open,.adminmodal.open,.userdetailmodal.open,.report-modal.open').forEach(el=>el.classList.remove('open'));
+ document.querySelectorAll('.audit-clear-modal.open,.photo-delete-modal.open,.lightbox.open,.usermodal.open,.adminmodal.open,.userdetailmodal.open,.report-modal.open').forEach(el=>el.classList.remove('open'));
  document.getElementById('nearestMenu')?.classList.remove('open');
  const sb=document.getElementById('suggestBox');if(sb)sb.classList.remove('open');
 }
@@ -1615,7 +1619,11 @@ document.getElementById('guideNext').onclick=()=>guideIndex===guideSteps.length-
 document.getElementById('guideSkip').onclick=finishGuide;
 const guideReplay=document.getElementById('guideReplay');if(guideReplay)guideReplay.onclick=startGuide;
 addEventListener('resize',()=>{if(!guideCard.hidden&&guideTarget)placeGuideCard(guideTarget,guideSteps[guideIndex])},{passive:true});
-setTimeout(()=>{if(!localStorage.getItem(GUIDE_KEY))startGuide()},1500);
+let firstGuideTimer=null;
+function maybeStartFirstGuide(){
+ if(localStorage.getItem(GUIDE_KEY)||nameModal.classList.contains('open'))return;
+ clearTimeout(firstGuideTimer);firstGuideTimer=setTimeout(()=>{if(!localStorage.getItem(GUIDE_KEY)&&!nameModal.classList.contains('open'))startGuide()},450);
+}
 document.getElementById('adminOpen').onclick=async()=>{adminModal.classList.add('open');await refreshAdmin()};
 const brand=document.getElementById('brand');
 let adminPressTimer=null,adminLongPressed=false;
