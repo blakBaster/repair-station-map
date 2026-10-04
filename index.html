@@ -1280,6 +1280,7 @@ function clearActiveStationMarker(){stationMarkers.forEach(m=>m.getElement().cla
 function refreshStationDistances(){}
 let stationReturnView=null;
 function renderStation(s){
+ closePrimarySurfaces('station');
  if(!panel.classList.contains('open'))stationReturnView={center:map.getCenter().toArray(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
  activeStation=s;setActiveStationMarker(s.id);const confirmBtn=document.getElementById('confirmWorking');confirmBtn.disabled=false;confirmBtn.textContent='✓ Всё работает';
  const recent=JSON.parse(localStorage.getItem('recent_stations')||'[]').filter(x=>String(x)!==String(s.id));recent.unshift(s.id);localStorage.setItem('recent_stations',JSON.stringify(recent.slice(0,10)));
@@ -1352,7 +1353,7 @@ async function loadStations(){
 }
 const reportModal=document.getElementById('reportModal'),reportMessage=document.getElementById('reportMessage'),reportSend=document.getElementById('reportSend'),reportHint=document.getElementById('reportHint');let reportStatus='';
 function closeReportModal(){reportModal.classList.remove('open');reportStatus='';reportMessage.value='';reportSend.disabled=true;reportModal.querySelectorAll('[data-report-status]').forEach(b=>b.classList.remove('active'))}
-document.getElementById('alertBtn').onclick=async()=>{if(!spamAllowed('report'))return;if(!await guardDevice('report'))return;document.getElementById('reportStationName').textContent=stationTitle.textContent;reportHint.textContent='Выберите состояние';reportModal.classList.add('open')};
+document.getElementById('alertBtn').onclick=async()=>{if(!spamAllowed('report'))return;if(!await guardDevice('report'))return;document.getElementById('reportStationName').textContent=stationTitle.textContent;reportHint.textContent='Выберите состояние';openPrimarySurface('report',reportModal)};
 document.getElementById('reportClose').onclick=closeReportModal;reportModal.onclick=e=>{if(e.target===reportModal)closeReportModal()};
 reportModal.querySelectorAll('[data-report-status]').forEach(b=>b.onclick=()=>{reportStatus=b.dataset.reportStatus;reportModal.querySelectorAll('[data-report-status]').forEach(x=>x.classList.toggle('active',x===b));reportSend.disabled=false;reportHint.textContent=reportStatus==='working'?'Станция исправна':reportStatus==='partial'?'Укажите, что работает не полностью':'Можно описать поломку'});
 reportSend.onclick=async()=>{if(!activeStation||!reportStatus)return;const stationId=activeStation.id,status=reportStatus,defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'},finalMessage=(reportMessage.value.trim()||defaults[status]).slice(0,500);reportSend.disabled=true;reportSend.textContent='Отправляем…';const {error}=await db.rpc('submit_station_report',{p_device_id:DEVICE_ID,p_station_id:stationId,p_status:status,p_message:finalMessage});reportSend.textContent='Отправить';if(error){console.error(error);reportSend.disabled=false;const msg=String(error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if(msg.includes('RATE_LIMIT:')){const sec=Number((msg.match(/RATE_LIMIT:(\d+)/)||[])[1]||0);notice('⏳ Подождите ещё '+Math.max(1,Math.ceil(sec/60))+' мин.')}else notice('Не удалось отправить сообщение');return}markSpamAction('report');closeReportModal();notice('Спасибо! Состояние обновлено ✓');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s)};
@@ -1495,9 +1496,25 @@ map.on('load',()=>{polishStreetMap();loadStations();try{if(!map.getLayer('repair
 
 function setCount(id,n,label=''){const e=document.getElementById(id);if(e)e.textContent=n===undefined?'':'('+n+(label?' '+label:'')+')'}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-admin-tab]');if(a){document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active',x===a));document.querySelectorAll('[data-admin-pane]').forEach(x=>x.classList.toggle('active',x.dataset.adminPane===a.dataset.adminTab))}const u=e.target.closest('[data-user-tab]');if(u){document.querySelectorAll('[data-user-tab]').forEach(x=>x.classList.toggle('active',x===u));renderMyActions(u.dataset.userTab)}});
+// Central UI layer manager: primary surfaces are exclusive; child surfaces may sit above their parent.
+function closePrimarySurfaces(except=''){
+ const primary={profile:'myActionsModal',admin:'adminModal',report:'reportModal'};
+ for(const [key,id] of Object.entries(primary)){
+  if(key===except)continue;
+  const el=document.getElementById(id);if(!el?.classList.contains('open'))continue;
+  if(key==='report'&&typeof closeReportModal==='function')closeReportModal();else el.classList.remove('open');
+ }
+ if(except!=='station')panel.classList.remove('open');
+ document.getElementById('nearestMenu')?.classList.remove('open');
+}
+function openPrimarySurface(kind,el){
+ if(!el)return;
+ closePrimarySurfaces(kind);
+ el.classList.add('open');
+}
 let myActionsData=[];
 const myActionsModal=document.getElementById('myActionsModal'),myActionsList=document.getElementById('myActionsList');
-document.getElementById('myActions').onclick=async()=>{renderSavedStations();myActionsModal.classList.add('open');await loadMyActions()};
+document.getElementById('myActions').onclick=async()=>{renderSavedStations();openPrimarySurface('profile',myActionsModal);await loadMyActions()};
 document.getElementById('myActionsClose').onclick=()=>myActionsModal.classList.remove('open');
 myActionsModal.onclick=e=>{if(e.target===myActionsModal)myActionsModal.classList.remove('open')};
 let myProfile=null;
@@ -1510,7 +1527,7 @@ async function loadMyAchievements(){const {data,error}=await db.rpc('get_my_achi
 async function loadMyAchievementProgress(){const {data:p,error}=await db.rpc('get_my_achievement_progress',{p_device_id:DEVICE_ID});if(error){console.error('get_my_achievement_progress:',error);return}const el=document.getElementById('psAchievementProgress');if(!el||!p)return;const row=(icon,name,current,next,desc)=>{const max=next==null,target=max?Math.max(1,current):next,pct=max?100:Math.min(100,Math.round((current/target)*100)),left=max?0:Math.max(0,target-current);return '<div class="achprog"><div class="achproghead"><span>'+icon+' '+name+'</span><span class="'+(max?'achmax':'')+'">'+(max?'Макс. ✓':current+' / '+target)+'</span></div><div class="achprogsub">'+desc+(max?'':' · осталось '+left)+'</div><div class="achbar"><i style="width:'+pct+'%"></i></div></div>'};el.innerHTML=row('✓','Проверяющий',Number(p.confirmations||0),p.checker_next,'Подтверждать, что станция работает')+row('💬','Наблюдатель',Number(p.reports||0),p.reporter_next,'Сообщать о поломках и состоянии')+row('📸','Фотограф',Number(p.photo_stations||0),p.photographer_next,'Добавлять фото разных станций')+row('📍','Разведчик',Number(p.approved_stations||0),p.explorer_next,'Находить и добавлять новые станции')+row('🖼️','Детальный осмотр',Number(p.max_photos_one_station||0),Number(p.detailed_inspection_target||5),'Собрать 5 полезных фото одной станции')+row('🤝','Помощник',Number(p.contributions||0),p.helper_next,'Любая полезная активность на карте')}
 async function loadMyProfileStats(){const {data,error}=await db.rpc('get_my_profile_stats',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile_stats:',error);return}const s=Array.isArray(data)?data[0]:data;if(!s)return;document.getElementById('psReports').textContent=Number(s.reports_total||0);document.getElementById('psPhotos').textContent=Number(s.photos_total||0);document.getElementById('psPhotosApproved').textContent=Number(s.photos_approved||0);document.getElementById('psStations').textContent=Number(s.stations_total||0);document.getElementById('psStationsApproved').textContent=Number(s.stations_approved||0);document.getElementById('psSince').textContent=profileDate(s.active_since);document.getElementById('psLast').textContent=profileDate(s.last_activity,true)}
 async function loadMyProfile(){const {data,error}=await db.rpc('get_my_profile',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile:',error);return null}myProfile=Array.isArray(data)?(data[0]||null):data;renderProfile();return myProfile}
-function openNameModal(){nameInput.value=myProfile?.display_name||'';nameModal.classList.add('open');setTimeout(()=>nameInput.focus(),80)}
+function openNameModal(){closePrimarySurfaces();nameInput.value=myProfile?.display_name||'';nameModal.classList.add('open');setTimeout(()=>nameInput.focus(),80)}
 async function saveDisplayName(){const name=nameInput.value.trim();if(name.length<2){notice('Имя должно содержать минимум 2 символа');return}if(name.length>30){notice('Имя слишком длинное');return}document.getElementById('nameSave').disabled=true;const {data,error}=await db.rpc('set_my_display_name',{p_device_id:DEVICE_ID,p_display_name:name,p_device_secret:DEVICE_SECRET});document.getElementById('nameSave').disabled=false;if(error){console.error('set_my_display_name:',error);notice('Не удалось сохранить имя: '+(error.message||''));return}localStorage.removeItem('repair_station_name_prompt_skipped');nameModal.classList.remove('open');await loadMyProfile();notice('Имя сохранено');maybeStartFirstGuide()}
 document.getElementById('nameSave').onclick=saveDisplayName;nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')saveDisplayName()});document.getElementById('nameSkip').onclick=()=>{localStorage.setItem('repair_station_name_prompt_skipped','1');nameModal.classList.remove('open');maybeStartFirstGuide()};document.getElementById('profileEdit').onclick=openNameModal;
 async function initUserProfile(){
@@ -1558,6 +1575,16 @@ lightbox.addEventListener('touchmove',e=>{if(lightboxTouchX==null||e.touches.len
 lightbox.addEventListener('touchend',e=>{if(lightboxTouchX==null)return;const dx=lightboxDragX,elapsed=Date.now()-lightboxTouchStartTime,fast=elapsed<280&&Math.abs(dx)>24,change=lightboxPhotos.length>1&&(Math.abs(dx)>Math.min(62,window.innerWidth*.15)||fast);lightboxTouchX=null;lightboxDragX=0;lightboxImg.classList.remove('lightbox-dragging');if(change){const dir=dx<0?1:-1;showLightboxPhoto(lightboxIndex+dir,dir)}else{lightboxImg.style.transform='translate3d(0,0,0)';lightboxImg.style.opacity='1'}},{passive:true});
 lightbox.addEventListener('touchcancel',()=>{lightboxTouchX=null;lightboxDragX=0;lightboxImg.classList.remove('lightbox-dragging');lightboxImg.style.transform='translate3d(0,0,0)';lightboxImg.style.opacity='1'},{passive:true});
 document.addEventListener('keydown',e=>{if(!lightbox.classList.contains('open'))return;if(e.key==='ArrowLeft')showLightboxPhoto(lightboxIndex-1,-1);else if(e.key==='ArrowRight')showLightboxPhoto(lightboxIndex+1,1);else if(e.key==='Escape')closeLightbox()});
+document.addEventListener('keydown',e=>{
+ if(e.key!=='Escape'||lightbox.classList.contains('open'))return;
+ if(photoDeleteModal?.classList.contains('open'))return closePhotoDelete();
+ if(document.getElementById('auditClearModal')?.classList.contains('open'))return document.getElementById('auditClearModal').classList.remove('open');
+ if(document.getElementById('userDetailModal')?.classList.contains('open'))return document.getElementById('userDetailModal').classList.remove('open');
+ if(nameModal?.classList.contains('open'))return;
+ if(reportModal?.classList.contains('open'))return closeReportModal();
+ if(document.getElementById('myActionsModal')?.classList.contains('open'))return document.getElementById('myActionsModal').classList.remove('open');
+ if(document.getElementById('adminModal')?.classList.contains('open'))return document.getElementById('adminModal').classList.remove('open');
+});
 const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue'),submissionQueue=document.getElementById('submissionQueue'),deviceQueue=document.getElementById('deviceQueue'),auditQueue=document.getElementById('auditQueue');
 const GUIDE_KEY='repair_station_guide_v2';
 const guideSteps=[
@@ -1624,13 +1651,13 @@ function maybeStartFirstGuide(){
  if(localStorage.getItem(GUIDE_KEY)||nameModal.classList.contains('open'))return;
  clearTimeout(firstGuideTimer);firstGuideTimer=setTimeout(()=>{if(!localStorage.getItem(GUIDE_KEY)&&!nameModal.classList.contains('open'))startGuide()},450);
 }
-document.getElementById('adminOpen').onclick=async()=>{adminModal.classList.add('open');await refreshAdmin()};
+document.getElementById('adminOpen').onclick=async()=>{openPrimarySurface('admin',adminModal);await refreshAdmin()};
 const brand=document.getElementById('brand');
 let adminPressTimer=null,adminLongPressed=false;
 function startAdminPress(e){
  if(window.innerWidth>600)return;
  adminLongPressed=false;
- adminPressTimer=setTimeout(async()=>{adminLongPressed=true;adminModal.classList.add('open');await refreshAdmin();if(navigator.vibrate)navigator.vibrate(35)},900);
+ adminPressTimer=setTimeout(async()=>{adminLongPressed=true;openPrimarySurface('admin',adminModal);await refreshAdmin();if(navigator.vibrate)navigator.vibrate(35)},900);
 }
 function cancelAdminPress(){clearTimeout(adminPressTimer);adminPressTimer=null}
 brand.addEventListener('touchstart',startAdminPress,{passive:true});
