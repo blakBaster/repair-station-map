@@ -1,4 +1,4 @@
-const CACHE='repair-station-shell-v17';
+const CACHE='repair-station-shell-v18';
 const SHELL=['./','./index.html','./manifest.webmanifest','./icons/repair-station-r4.svg'];
 
 self.addEventListener('install',event=>{
