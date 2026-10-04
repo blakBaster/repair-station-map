@@ -1498,6 +1498,10 @@ function setCount(id,n,label=''){const e=document.getElementById(id);if(e)e.text
 document.addEventListener('click',e=>{const a=e.target.closest('[data-admin-tab]');if(a){document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active',x===a));document.querySelectorAll('[data-admin-pane]').forEach(x=>x.classList.toggle('active',x.dataset.adminPane===a.dataset.adminTab))}const u=e.target.closest('[data-user-tab]');if(u){document.querySelectorAll('[data-user-tab]').forEach(x=>x.classList.toggle('active',x===u));renderMyActions(u.dataset.userTab)}});
 // Central UI layer manager: primary surfaces are exclusive; child surfaces may sit above their parent.
 function closePrimarySurfaces(except=''){
+ const lightboxEl=document.getElementById('lightbox');if(lightboxEl?.classList.contains('open')&&typeof closeLightbox==='function')closeLightbox();
+ document.getElementById('userDetailModal')?.classList.remove('open');
+ document.getElementById('auditClearModal')?.classList.remove('open');
+ const pd=document.getElementById('photoDeleteModal');if(pd?.classList.contains('open')&&typeof closePhotoDelete==='function')closePhotoDelete();
  const primary={profile:'myActionsModal',admin:'adminModal',report:'reportModal'};
  for(const [key,id] of Object.entries(primary)){
   if(key===except)continue;
