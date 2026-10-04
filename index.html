@@ -952,7 +952,7 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 <script>
 const SUPABASE_URL='https://fbyzaovfjnagwmvczxjs.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_kVGtNH6M4Z3qtPXDKO3j_w_-kk19zwd';
-const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);window.addEventListener('offline',()=>notice('Офлайн · карта работает с сохранёнными данными'));window.addEventListener('online',()=>{notice('Соединение восстановлено');loadStations()});
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const MAPTILER_KEY='MN8XrFGdXNKPHOiRGVCD';
 const STREET_STYLE='https://tiles.openfreemap.org/styles/fiord';
 const SATELLITE_STYLE={version:8,sources:{satellite:{type:'raster',tiles:[`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`],tileSize:256,attribution:'© MapTiler © OpenStreetMap contributors'}},layers:[{id:'satellite',type:'raster',source:'satellite'}]};
