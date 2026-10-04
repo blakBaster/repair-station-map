@@ -961,7 +961,7 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 .admindashboard button.active{background:linear-gradient(180deg,#16263a,#111e30)!important;border-color:#6aa9e83b!important;box-shadow:0 7px 20px #0003,inset 0 1px 0 #ffffff0a!important}
 .admindashboard small{color:#718096!important}
 /* First-visit guide */
-.guide-overlay{position:fixed;z-index:90;inset:0;background:transparent;display:none}.guide-overlay.open{display:block}.guide-card{position:fixed;z-index:92;width:min(360px,calc(100vw - 28px));box-sizing:border-box;padding:16px;border-radius:18px;background:linear-gradient(180deg,#122034,#0d1827);border:1px solid #ffffff18;box-shadow:0 24px 70px #000b;color:#eaf0f7}.guide-card h3{margin:0 0 7px;font-size:16px}.guide-card p{margin:0;color:#9dacbf;font-size:11px;line-height:1.55}.guide-progress{margin-bottom:9px;color:#6f8198;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.guide-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px}.guide-actions button{border:0;border-radius:10px;padding:9px 12px;font-size:10.5px;font-weight:800}.guide-skip{background:transparent;color:#8494a9}.guide-next{background:#eaf0f7;color:#101827}.guide-target{outline:2px solid #60a5fa99!important;outline-offset:3px!important}.guide-spotlight{position:fixed;z-index:91;pointer-events:none;border-radius:14px;box-shadow:0 0 0 4px #60a5fa55,0 0 0 9999px #020713b8;transition:top .16s ease,left .16s ease,width .16s ease,height .16s ease}.guide-replay{grid-column:1/-1;margin-top:0;width:100%;border:1px solid #ffffff10;border-radius:11px;background:#ffffff05;color:#aab7c8;padding:9px;font-size:10px;font-weight:700}@media(max-width:600px){.guide-card{left:14px!important;right:14px!important;bottom:max(14px,env(safe-area-inset-bottom))!important;top:auto!important;width:auto}.guide-target{outline-offset:2px!important}}</style>
+.guide-overlay{position:fixed;z-index:90;inset:0;background:transparent;display:none}.guide-overlay.open{display:block}.guide-card{position:fixed;z-index:92;width:min(360px,calc(100vw - 28px));box-sizing:border-box;padding:16px;border-radius:18px;background:linear-gradient(180deg,#122034,#0d1827);border:1px solid #ffffff18;box-shadow:0 24px 70px #000b;color:#eaf0f7}.guide-card h3{margin:0 0 7px;font-size:16px}.guide-card p{margin:0;color:#9dacbf;font-size:11px;line-height:1.55}.guide-progress{margin-bottom:9px;color:#6f8198;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.guide-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px}.guide-actions button{border:0;border-radius:10px;padding:9px 12px;font-size:10.5px;font-weight:800}.guide-skip{background:transparent;color:#8494a9}.guide-next{background:#eaf0f7;color:#101827}.guide-target{outline:2px solid #60a5fa99!important;outline-offset:3px!important}.guide-spotlight{position:fixed;z-index:91;pointer-events:none;border-radius:14px;box-shadow:0 0 0 4px #60a5fa55,0 0 0 9999px #020713b8;transition:top .16s ease,left .16s ease,width .16s ease,height .16s ease}.guide-replay{grid-column:1/-1;margin-top:0;width:100%;border:1px solid #ffffff10;border-radius:11px;background:#ffffff05;color:#aab7c8;padding:9px;font-size:10px;font-weight:700}@media(max-width:600px){.guide-card{left:14px!important;right:14px!important;bottom:max(14px,env(safe-area-inset-bottom))!important;top:auto!important;width:auto}.guide-card.guide-card-top{top:max(12px,env(safe-area-inset-top))!important;bottom:auto!important}.guide-target{outline-offset:2px!important}}</style>
 </head>
 <body>
 <div id="map" class="map-loading"></div><div class="guide-overlay" id="guideOverlay"></div><div class="guide-spotlight" id="guideSpotlight" hidden></div><div class="guide-card" id="guideCard" hidden><div class="guide-progress" id="guideProgress"></div><h3 id="guideTitle"></h3><p id="guideText"></p><div class="guide-actions"><button class="guide-skip" id="guideSkip">Пропустить</button><button class="guide-next" id="guideNext">Далее →</button></div></div>
@@ -1555,7 +1555,67 @@ lightbox.addEventListener('touchend',e=>{if(lightboxTouchX==null)return;const dx
 lightbox.addEventListener('touchcancel',()=>{lightboxTouchX=null;lightboxDragX=0;lightboxImg.classList.remove('lightbox-dragging');lightboxImg.style.transform='translate3d(0,0,0)';lightboxImg.style.opacity='1'},{passive:true});
 document.addEventListener('keydown',e=>{if(!lightbox.classList.contains('open'))return;if(e.key==='ArrowLeft')showLightboxPhoto(lightboxIndex-1,-1);else if(e.key==='ArrowRight')showLightboxPhoto(lightboxIndex+1,1);else if(e.key==='Escape')closeLightbox()});
 const adminModal=document.getElementById('adminModal'),adminLoggedOut=document.getElementById('adminLoggedOut'),adminLoggedIn=document.getElementById('adminLoggedIn'),photoQueue=document.getElementById('photoQueue'),submissionQueue=document.getElementById('submissionQueue'),deviceQueue=document.getElementById('deviceQueue'),auditQueue=document.getElementById('auditQueue');
-const GUIDE_KEY='repair_station_guide_v1',guideSteps=[{target:'#brand',title:'Карта ремонтных станций',text:'Здесь отмечены общественные велоремонтные точки. Нажимай на маркер станции, чтобы открыть её карточку.'},{target:'#nearest',title:'Найти нужное рядом',text:'Эта кнопка быстро найдёт ближайшую ремонтную станцию или насос.'},{target:'#gps',title:'Моё местоположение',text:'Показывает твою позицию на карте и помогает понять, какие станции ближе.'},{target:'#suggest',title:'Добавить новую станцию',text:'Нашёл станцию, которой ещё нет на карте? Поставь точку, укажи оборудование и отправь её на модерацию.'},{target:'#myActions',title:'Твой профиль и вклад',text:'Здесь твои действия, достижения, избранные станции и рейтинг участников.'},{target:'#panel',title:'Карточка станции',text:'После нажатия на маркер здесь будут статус, оборудование, актуальность, фотографии и действия со станцией.',prepare:()=>{if(stations.length)renderStation(stations[0])}},{target:'#confirmWorking',title:'Подтверждай актуальность',text:'Если ты находишься у станции и всё исправно — нажми «Всё работает». Это помогает другим доверять данным.',prepare:()=>{if(stations.length)renderStation(stations[0])}},{target:'#alertBtn',title:'Сообщай о проблемах',text:'Если что-то сломано или работает частично — выбери состояние и при желании опиши проблему.',prepare:()=>{if(stations.length)renderStation(stations[0])}},{target:'#photoBtn',title:'Добавляй свежие фото',text:'Фото помогают быстро понять состояние и найти станцию на месте. Новые фото проходят модерацию.',prepare:()=>{if(stations.length)renderStation(stations[0])}}];let guideIndex=0,guideTarget=null;const guideOverlay=document.getElementById('guideOverlay'),guideCard=document.getElementById('guideCard'),guideSpotlight=document.getElementById('guideSpotlight');function clearGuideTarget(){if(guideTarget){guideTarget.classList.remove('guide-target');guideTarget=null}guideSpotlight.hidden=true}function finishGuide(){clearGuideTarget();guideOverlay.classList.remove('open');guideCard.hidden=true;localStorage.setItem(GUIDE_KEY,'1')}function placeGuideCard(el){if(matchMedia('(max-width:600px)').matches)return;const r=el.getBoundingClientRect(),cr=guideCard.getBoundingClientRect();let top=r.bottom+14,left=Math.min(innerWidth-cr.width-14,Math.max(14,r.left));if(top+cr.height>innerHeight-14)top=Math.max(14,r.top-cr.height-14);guideCard.style.top=top+'px';guideCard.style.left=left+'px'}function showGuideStep(i){clearGuideTarget();guideIndex=Math.max(0,Math.min(i,guideSteps.length-1));const step=guideSteps[guideIndex];if(step.prepare)step.prepare();setTimeout(()=>{const el=document.querySelector(step.target);if(!el){if(guideIndex<guideSteps.length-1)return showGuideStep(guideIndex+1);return finishGuide()}guideTarget=el;el.classList.add('guide-target');const r=el.getBoundingClientRect(),pad=5;guideSpotlight.style.left=Math.max(0,r.left-pad)+'px';guideSpotlight.style.top=Math.max(0,r.top-pad)+'px';guideSpotlight.style.width=Math.min(innerWidth,r.width+pad*2)+'px';guideSpotlight.style.height=Math.min(innerHeight,r.height+pad*2)+'px';guideSpotlight.hidden=false;guideOverlay.classList.add('open');guideCard.hidden=false;document.getElementById('guideProgress').textContent=(guideIndex+1)+' / '+guideSteps.length;document.getElementById('guideTitle').textContent=step.title;document.getElementById('guideText').textContent=step.text;document.getElementById('guideNext').textContent=guideIndex===guideSteps.length-1?'Понятно, начать':'Далее →';placeGuideCard(el)},80)}function startGuide(){guideIndex=0;showGuideStep(0)}document.getElementById('guideNext').onclick=()=>guideIndex===guideSteps.length-1?finishGuide():showGuideStep(guideIndex+1);document.getElementById('guideSkip').onclick=finishGuide;const guideReplay=document.getElementById('guideReplay');if(guideReplay)guideReplay.onclick=()=>{document.getElementById('myActionsModal').classList.remove('open');startGuide()};setTimeout(()=>{if(!localStorage.getItem(GUIDE_KEY))startGuide()},1200);
+const GUIDE_KEY='repair_station_guide_v2';
+const guideSteps=[
+ {target:'#brand',title:'Добро пожаловать',text:'Repair Station Map показывает реальные велоремонтные точки. Нажимай на маркеры, чтобы смотреть состояние станции.'},
+ {target:'#gps',title:'Где я?',text:'Эта кнопка показывает твоё местоположение и расстояние до станций.'},
+ {target:'#nearest',title:'Что есть рядом',text:'Быстро найди ближайшую ремонтную станцию или насос.'},
+ {target:'#suggest',title:'Добавить станцию',text:'Нашёл новую точку? Поставь её на карте, отметь оборудование и отправь на модерацию.'},
+ {target:'#myActions',title:'Твой профиль',text:'Здесь твой вклад в карту, достижения, избранное, недавние станции и рейтинг.'},
+ {target:'#panel',title:'Карточка станции',text:'Здесь собрана главная информация: статус, когда станцию проверяли, оборудование, фото и сообщения.',demo:true},
+ {target:'#confirmWorking',title:'Помогай другим',text:'Если станция исправна — подтверди это. Если есть проблема — используй «Сообщить о состоянии». Здесь же можно добавить свежее фото.',demo:true}
+];
+let guideIndex=0,guideTarget=null,guideDemoPanel=false;
+const guideOverlay=document.getElementById('guideOverlay'),guideCard=document.getElementById('guideCard'),guideSpotlight=document.getElementById('guideSpotlight');
+function closeGuideConflicts(){
+ document.querySelectorAll('.name-modal.open,.audit-clear-modal.open,.photo-delete-modal.open,.lightbox.open,.usermodal.open,.adminmodal.open,.userdetailmodal.open,.report-modal.open').forEach(el=>el.classList.remove('open'));
+ document.getElementById('nearestMenu')?.classList.remove('open');
+ const sb=document.getElementById('suggestBox');if(sb)sb.classList.remove('open');
+}
+function clearGuideTarget(){if(guideTarget){guideTarget.classList.remove('guide-target');guideTarget=null}guideSpotlight.hidden=true}
+function finishGuide(){
+ clearGuideTarget();guideOverlay.classList.remove('open');guideCard.hidden=true;guideCard.classList.remove('guide-card-top');
+ if(guideDemoPanel){panel.classList.remove('open');clearActiveStationMarker();guideDemoPanel=false}
+ localStorage.setItem(GUIDE_KEY,'1');
+}
+function placeGuideCard(el,step){
+ guideCard.classList.toggle('guide-card-top',matchMedia('(max-width:600px)').matches&&step.demo===true);
+ if(matchMedia('(max-width:600px)').matches)return;
+ const r=el.getBoundingClientRect(),cr=guideCard.getBoundingClientRect(),gap=14;
+ const spaces={below:innerHeight-r.bottom,above:r.top,right:innerWidth-r.right,left:r.left};
+ let top,left;
+ if(spaces.right>=cr.width+gap){left=r.right+gap;top=Math.min(innerHeight-cr.height-14,Math.max(14,r.top))}
+ else if(spaces.left>=cr.width+gap){left=r.left-cr.width-gap;top=Math.min(innerHeight-cr.height-14,Math.max(14,r.top))}
+ else if(spaces.below>=cr.height+gap){top=r.bottom+gap;left=Math.min(innerWidth-cr.width-14,Math.max(14,r.left))}
+ else{top=Math.max(14,r.top-cr.height-gap);left=Math.min(innerWidth-cr.width-14,Math.max(14,r.left))}
+ guideCard.style.top=top+'px';guideCard.style.left=left+'px';
+}
+function showGuideStep(i){
+ clearGuideTarget();guideIndex=Math.max(0,Math.min(i,guideSteps.length-1));const step=guideSteps[guideIndex];
+ if(step.demo&&!panel.classList.contains('open')&&stations.length){guideDemoPanel=true;renderStation(stations[0])}
+ setTimeout(()=>{
+  const el=document.querySelector(step.target);
+  if(!el||!el.getClientRects().length){if(guideIndex<guideSteps.length-1)return showGuideStep(guideIndex+1);return finishGuide()}
+  guideTarget=el;el.classList.add('guide-target');
+  const r=el.getBoundingClientRect(),pad=5;
+  guideSpotlight.style.left=Math.max(0,r.left-pad)+'px';guideSpotlight.style.top=Math.max(0,r.top-pad)+'px';
+  guideSpotlight.style.width=Math.max(0,Math.min(innerWidth-Math.max(0,r.left-pad),r.width+pad*2))+'px';
+  guideSpotlight.style.height=Math.max(0,Math.min(innerHeight-Math.max(0,r.top-pad),r.height+pad*2))+'px';
+  guideSpotlight.hidden=false;guideOverlay.classList.add('open');guideCard.hidden=false;
+  document.getElementById('guideProgress').textContent=(guideIndex+1)+' / '+guideSteps.length;
+  document.getElementById('guideTitle').textContent=step.title;document.getElementById('guideText').textContent=step.text;
+  document.getElementById('guideNext').textContent=guideIndex===guideSteps.length-1?'Понятно, начать':'Далее →';
+  placeGuideCard(el,step);
+ },100);
+}
+function startGuide(){
+ closeGuideConflicts();panel.classList.remove('open');clearActiveStationMarker();guideDemoPanel=false;guideIndex=0;showGuideStep(0);
+}
+document.getElementById('guideNext').onclick=()=>guideIndex===guideSteps.length-1?finishGuide():showGuideStep(guideIndex+1);
+document.getElementById('guideSkip').onclick=finishGuide;
+const guideReplay=document.getElementById('guideReplay');if(guideReplay)guideReplay.onclick=startGuide;
+addEventListener('resize',()=>{if(!guideCard.hidden&&guideTarget)placeGuideCard(guideTarget,guideSteps[guideIndex])},{passive:true});
+setTimeout(()=>{if(!localStorage.getItem(GUIDE_KEY))startGuide()},1500);
 document.getElementById('adminOpen').onclick=async()=>{adminModal.classList.add('open');await refreshAdmin()};
 const brand=document.getElementById('brand');
 let adminPressTimer=null,adminLongPressed=false;
