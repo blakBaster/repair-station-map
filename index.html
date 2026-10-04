@@ -883,7 +883,7 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 .panel .route:active,.panel .close:active,.panel .alertbtn:active,.panel .station-community button:active{transform:scale(.975)}
 .panel .route:hover,.panel .close:hover,.panel .alertbtn:hover,.panel .station-community button:hover{filter:brightness(1.08)}
 @media(max-width:600px){
- .station-marker:hover,.station-marker.active{transform:none}
+ .station-marker:hover,.station-marker.active{filter:brightness(1.06)}
  .panel.open{animation-duration:.15s}
 }
 @media(prefers-reduced-motion:reduce){
@@ -921,6 +921,14 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 @media(max-width:600px){.report-modal{align-items:flex-end;padding:0}.report-box{width:100%;box-sizing:border-box;border-radius:20px 20px 0 0;border-bottom:0;padding:14px 14px max(14px,env(safe-area-inset-bottom))}.report-statuses{grid-template-columns:1fr}.report-statuses button{display:flex;align-items:center;justify-content:space-between;padding:9px 10px}.report-statuses button small{margin:0}.report-box textarea{min-height:74px}}
 /* Marker safety: MapLibre owns transform on the OUTER marker element. Never override it. */
 .station-marker-pin,.station-marker:hover .station-marker-pin,.station-marker:active .station-marker-pin,.station-marker.active .station-marker-pin{transform:none!important;transition:border-color .16s ease,box-shadow .16s ease,filter .16s ease!important}
+/* Release mobile polish */
+@media(max-width:600px){
+ .report-modal{height:100dvh;box-sizing:border-box}
+ .report-box{max-height:calc(100dvh - env(safe-area-inset-top));overflow-y:auto;overscroll-behavior:contain}
+ .report-box textarea{font-size:16px}
+ .name-card input,.adminform input{font-size:16px}
+ .panel{overflow:visible!important;max-height:none!important}
+}
 </style>
 </head>
 <body>
@@ -1112,7 +1120,7 @@ async function loadAlert(stationId){
   const rows=data||[],r=rows[0];
   if(!r){alertText.textContent='Сообщений пока нет';alertDate.textContent='Будьте первым, кто проверит эту станцию';return}
   alertText.textContent=r.message||'Без комментария';
-  alertDate.textContent=relativeCommunityTime(r.created_at);
+  alertDate.textContent=relativeCommunityTime(r.created_at)+(rows.length>1?' · ещё '+(rows.length-1)+' недавн. сообщ.':'');
   const [cls,label]=statusInfo(r.status);stationStatus.className='statuspill '+cls;stationStatus.textContent=label;lastChecked.textContent=checkedText(r.created_at);
  }catch(e){console.error('loadAlert',e);if(activeStation&&String(activeStation.id)===String(stationId)){alertText.textContent='Не удалось загрузить сообщения';alertDate.textContent=''}}
 }
@@ -1196,12 +1204,12 @@ async function warmMobileStationPhotos(){
  try{
   const {data,error}=await db.from('station_photos').select('id,station_id,storage_path').eq('moderation_status','approved').order('created_at',{ascending:false});
   if(error)throw error;
-  const rows=data||[],paths=rows.map(p=>String(p.storage_path||'').trim().replace(/^\/+|^station-photos\//g,'')).filter(Boolean);
-  if(!paths.length)return;
-  const {data:signed,error:signError}=await db.storage.from('station-photos').createSignedUrls(paths,3600);
+  const items=(data||[]).map(p=>({p,path:String(p.storage_path||'').trim().replace(/^\/+|^station-photos\//g,'')})).filter(x=>x.path);
+  if(!items.length)return;
+  const {data:signed,error:signError}=await db.storage.from('station-photos').createSignedUrls(items.map(x=>x.path),3600);
   if(signError)throw signError;
   const byStation=new Map();
-  rows.forEach((p,i)=>{const url=signed?.[i]?.signedUrl;if(!url)return;const key=String(p.station_id),arr=byStation.get(key)||[];arr.push({id:p.id,url});byStation.set(key,arr)});
+  items.forEach((x,i)=>{const url=signed?.[i]?.signedUrl;if(!url)return;const p=x.p,key=String(p.station_id),arr=byStation.get(key)||[];arr.push({id:p.id,url});byStation.set(key,arr)});
   const now=Date.now();
   byStation.forEach((photos,key)=>stationPhotoCache.set(key,{time:now,photos}));
   const preload=[];
@@ -1262,7 +1270,8 @@ async function loadStationConfidence(s){
  const {data,error}=await db.rpc('get_station_confidence',{p_station_id:s.id});
  if(error||!activeStation||String(activeStation.id)!==stationId)return;
  const x=Array.isArray(data)?data[0]:data,n=Number(x?.confirmations||0),trust=Number(x?.trust_score||0);
- if(n>0){const confidence=trust>=6?' · доверие высокое':trust>=3?' · доверие среднее':'';el.textContent=base+' · ✓ '+n+' подтвержд.'+confidence}
+ const confidence=trust>=6?'высокое':trust>=3?'среднее':n>0?'базовое':'нет подтверждений';
+ el.textContent=base+' · '+(n>0?'✓ '+n+' подтвержд. · доверие '+confidence:'доверие: '+confidence)
 }
 
 let ignoreMapClickUntil=0;
@@ -1466,7 +1475,7 @@ function profileDate(v,withTime=false){if(!v)return '—';const d=new Date(v);re
 async function loadMyBadges(){const {data,error}=await db.rpc('get_my_badges',{p_device_id:DEVICE_ID});if(error){console.error('get_my_badges:',error);return}const labels={star:'⭐ Звезда',medal:'🏅 Медаль',ribbon:'🎖️ Лента'},el=document.getElementById('psBadge');el.textContent=(data&&data.length)?data.map(x=>labels[x.badge_type]||x.badge_type).join(' · '):'пока нет'}
 async function loadMyReputation(){const {data,error}=await db.rpc('get_my_reputation',{p_device_id:DEVICE_ID});if(error){console.error('get_my_reputation:',error);return}document.getElementById('psReputation').textContent=Number(data||0)}
 async function loadMyAchievements(){const {data,error}=await db.rpc('get_my_achievements',{p_device_id:DEVICE_ID});if(error){console.error('get_my_achievements:',error);return}const meta={photographer_1:'📸 Фотограф I',photographer_2:'📸 Фотограф II',photographer_3:'📸 Фотограф III',detailed_inspection:'🖼️ Детальный осмотр',explorer_1:'📍 Разведчик I',explorer_2:'📍 Разведчик II',explorer_3:'📍 Разведчик III',reporter_1:'💬 Наблюдатель I',reporter_2:'💬 Наблюдатель II',reporter_3:'💬 Наблюдатель III',checker_1:'✓ Проверяющий I',checker_2:'✓ Проверяющий II',checker_3:'✓ Проверяющий III',helper_1:'🤝 Помощник I',helper_2:'🤝 Помощник II',helper_3:'🤝 Помощник III',auditor:'🔍 Аудитор',expert_expertness:'🧐 Эксперт по экспертности',according_to_plan:'📋 Всё по плану',checked_everything:'🤓 Я здесь всё проверил'},el=document.getElementById('psAchievements');if(!data?.length){el.innerHTML='<span class="achievementempty">Пока нет достижений</span>';return}el.innerHTML=data.map(a=>'<span class="achievementchip" title="'+escapeHtml(new Date(a.unlocked_at).toLocaleString('ru-RU'))+'">'+escapeHtml(meta[a.achievement_key]||a.achievement_key)+'</span>').join('')}
-async function loadMyAchievementProgress(){const {data:p,error}=await db.rpc('get_my_achievement_progress',{p_device_id:DEVICE_ID});if(error){console.error('get_my_achievement_progress:',error);return}const el=document.getElementById('psAchievementProgress');if(!el||!p)return;const row=(icon,name,current,next,desc)=>{const max=next==null,target=max?Math.max(1,current):next,pct=max?100:Math.min(100,Math.round((current/target)*100));return '<div class="achprog"><div class="achproghead"><span>'+icon+' '+name+'</span><span class="'+(max?'achmax':'')+'">'+(max?'Макс. ✓':current+' / '+target)+'</span></div><div class="achprogsub">'+desc+'</div><div class="achbar"><i style="width:'+pct+'%"></i></div></div>'};el.innerHTML=row('✓','Проверяющий',Number(p.confirmations||0),p.checker_next,'Подтверждать, что станция работает')+row('💬','Наблюдатель',Number(p.reports||0),p.reporter_next,'Сообщать о поломках и состоянии')+row('📸','Фотограф',Number(p.photo_stations||0),p.photographer_next,'Добавлять фото разных станций')+row('📍','Разведчик',Number(p.approved_stations||0),p.explorer_next,'Находить и добавлять новые станции')+row('🖼️','Детальный осмотр',Number(p.max_photos_one_station||0),Number(p.detailed_inspection_target||5),'Собрать 5 полезных фото одной станции')+row('🤝','Помощник',Number(p.contributions||0),p.helper_next,'Любая полезная активность на карте')}
+async function loadMyAchievementProgress(){const {data:p,error}=await db.rpc('get_my_achievement_progress',{p_device_id:DEVICE_ID});if(error){console.error('get_my_achievement_progress:',error);return}const el=document.getElementById('psAchievementProgress');if(!el||!p)return;const row=(icon,name,current,next,desc)=>{const max=next==null,target=max?Math.max(1,current):next,pct=max?100:Math.min(100,Math.round((current/target)*100)),left=max?0:Math.max(0,target-current);return '<div class="achprog"><div class="achproghead"><span>'+icon+' '+name+'</span><span class="'+(max?'achmax':'')+'">'+(max?'Макс. ✓':current+' / '+target)+'</span></div><div class="achprogsub">'+desc+(max?'':' · осталось '+left)+'</div><div class="achbar"><i style="width:'+pct+'%"></i></div></div>'};el.innerHTML=row('✓','Проверяющий',Number(p.confirmations||0),p.checker_next,'Подтверждать, что станция работает')+row('💬','Наблюдатель',Number(p.reports||0),p.reporter_next,'Сообщать о поломках и состоянии')+row('📸','Фотограф',Number(p.photo_stations||0),p.photographer_next,'Добавлять фото разных станций')+row('📍','Разведчик',Number(p.approved_stations||0),p.explorer_next,'Находить и добавлять новые станции')+row('🖼️','Детальный осмотр',Number(p.max_photos_one_station||0),Number(p.detailed_inspection_target||5),'Собрать 5 полезных фото одной станции')+row('🤝','Помощник',Number(p.contributions||0),p.helper_next,'Любая полезная активность на карте')}
 async function loadMyProfileStats(){const {data,error}=await db.rpc('get_my_profile_stats',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile_stats:',error);return}const s=Array.isArray(data)?data[0]:data;if(!s)return;document.getElementById('psReports').textContent=Number(s.reports_total||0);document.getElementById('psPhotos').textContent=Number(s.photos_total||0);document.getElementById('psPhotosApproved').textContent=Number(s.photos_approved||0);document.getElementById('psStations').textContent=Number(s.stations_total||0);document.getElementById('psStationsApproved').textContent=Number(s.stations_approved||0);document.getElementById('psSince').textContent=profileDate(s.active_since);document.getElementById('psLast').textContent=profileDate(s.last_activity,true)}
 async function loadMyProfile(){const {data,error}=await db.rpc('get_my_profile',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile:',error);return null}myProfile=Array.isArray(data)?(data[0]||null):data;renderProfile();return myProfile}
 function openNameModal(){nameInput.value=myProfile?.display_name||'';nameModal.classList.add('open');setTimeout(()=>nameInput.focus(),80)}
@@ -1555,7 +1564,8 @@ async function loadAdminUsers(){
  const q=document.getElementById('userQueue');if(!q)return;q.innerHTML='<div class="adminmsg">Загрузка пользователей…</div>';
  const {data,error}=await db.rpc('admin_get_users');if(error){console.error('admin_get_users:',error);q.innerHTML='<div class="adminmsg">Не удалось загрузить пользователей.</div>';return}
  const users=data||[];setCount('aUserCount',users.length);setCount('aUserLabel',users.length,'всего');q.innerHTML='';if(!users.length){q.innerHTML='<div class="adminmsg">Пользователей пока нет.</div>';return}
- for(const u of users){const {data:badges,error:be}=await db.rpc('get_my_badges',{p_device_id:u.device_id});if(be)console.error('get badges:',be);const owned=new Set((badges||[]).map(x=>x.badge_type));const card=document.createElement('div');card.className='useradmincard';const name=escapeHtml(u.display_name||'Без имени'),last=u.last_activity?new Date(u.last_activity).toLocaleString('ru-RU'):'—',since=u.active_since?new Date(u.active_since).toLocaleDateString('ru-RU'):'—';card.innerHTML='<div class="useradminname">👤 '+name+(u.is_banned?' · 🚫 Заблокирован':'')+'</div><div class="useradminstats">📝 Сообщений: <b>'+Number(u.reports_total||0)+'</b><br>📷 Фото: <b>'+Number(u.photos_total||0)+'</b> · одобрено <b>'+Number(u.photos_approved||0)+'</b><br>📍 Станций: <b>'+Number(u.stations_total||0)+'</b> · одобрено <b>'+Number(u.stations_approved||0)+'</b><br><span class="muted">🕐 С нами с: '+escapeHtml(since)+'<br>⚡ Последняя активность: '+escapeHtml(last)+'</span></div><div class="badgecontrols"><button data-badge="star" class="'+(owned.has('star')?'active':'')+'">⭐ Звезда</button><button data-badge="medal" class="'+(owned.has('medal')?'active':'')+'">🏅 Медаль</button><button data-badge="ribbon" class="'+(owned.has('ribbon')?'active':'')+'">🎖️ Лента</button></div><div class="useradmintech">💻 <b>Устройство:</b> '+escapeHtml(u.device_type||'—')+'<br>🖥️ <b>ОС:</b> '+escapeHtml(u.os||'—')+'<br>🌐 <b>Браузер:</b> '+escapeHtml(u.browser||'—')+'</div><div class="useradminid">🆔 Device ID: '+escapeHtml(u.device_id)+'</div>';
+ const badgeResults=await Promise.all(users.map(u=>db.rpc('get_my_badges',{p_device_id:u.device_id})));
+ for(let ui=0;ui<users.length;ui++){const u=users[ui],badgeResult=badgeResults[ui],badges=badgeResult.data||[];if(badgeResult.error)console.error('get badges:',badgeResult.error);const owned=new Set(badges.map(x=>x.badge_type));const card=document.createElement('div');card.className='useradmincard';const name=escapeHtml(u.display_name||'Без имени'),last=u.last_activity?new Date(u.last_activity).toLocaleString('ru-RU'):'—',since=u.active_since?new Date(u.active_since).toLocaleDateString('ru-RU'):'—';card.innerHTML='<div class="useradminname">👤 '+name+(u.is_banned?' · 🚫 Заблокирован':'')+'</div><div class="useradminstats">📝 Сообщений: <b>'+Number(u.reports_total||0)+'</b><br>📷 Фото: <b>'+Number(u.photos_total||0)+'</b> · одобрено <b>'+Number(u.photos_approved||0)+'</b><br>📍 Станций: <b>'+Number(u.stations_total||0)+'</b> · одобрено <b>'+Number(u.stations_approved||0)+'</b><br><span class="muted">🕐 С нами с: '+escapeHtml(since)+'<br>⚡ Последняя активность: '+escapeHtml(last)+'</span></div><div class="badgecontrols"><button data-badge="star" class="'+(owned.has('star')?'active':'')+'">⭐ Звезда</button><button data-badge="medal" class="'+(owned.has('medal')?'active':'')+'">🏅 Медаль</button><button data-badge="ribbon" class="'+(owned.has('ribbon')?'active':'')+'">🎖️ Лента</button></div><div class="useradmintech">💻 <b>Устройство:</b> '+escapeHtml(u.device_type||'—')+'<br>🖥️ <b>ОС:</b> '+escapeHtml(u.os||'—')+'<br>🌐 <b>Браузер:</b> '+escapeHtml(u.browser||'—')+'</div><div class="useradminid">🆔 Device ID: '+escapeHtml(u.device_id)+'</div>';
  card.querySelectorAll('[data-badge]').forEach(btn=>btn.onclick=async()=>{const type=btn.dataset.badge,has=btn.classList.contains('active');btn.disabled=true;const {error}=await db.rpc(has?'admin_remove_badge':'admin_award_badge',{p_device_id:u.device_id,p_badge_type:type});btn.disabled=false;if(error){console.error(error);notice('Не удалось изменить награду: '+(error.message||''));return}btn.classList.toggle('active',!has);notice(has?'Награда снята':'Награда выдана')});card.addEventListener('click',e=>{if(!e.target.closest('button'))openAdminUserDetail(u)});q.appendChild(card)}
 }
 const userDetailModal=document.getElementById('userDetailModal'),userDetailBody=document.getElementById('userDetailBody');
