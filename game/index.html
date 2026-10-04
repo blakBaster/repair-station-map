@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Repair Station Game Prototype</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="game">
+  <div id="map"></div>
+  <div class="vignette"></div>
+
+  <header class="hud topbar">
+    <div>
+      <b>WARSAW RUNNER</b>
+      <small>prototype v1</small>
+    </div>
+    <div class="hud-right">
+      <span id="speedLabel">ХОДЬБА</span>
+      <span id="stationCount">0 станций</span>
+    </div>
+  </header>
+
+  <div class="player-wrap" aria-hidden="true">
+    <div id="player" class="player">
+      <div class="player-shadow"></div>
+      <div class="player-body">
+        <div class="player-head"></div>
+        <div class="player-torso"></div>
+        <div class="player-leg left"></div>
+        <div class="player-leg right"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="interactionHint" class="interaction-hint hidden">E — взаимодействовать</div>
+
+  <section class="hud panel stats">
+    <div><span>Энергия</span><b id="staminaText">100%</b></div>
+    <div class="bar"><i id="staminaBar"></i></div>
+    <div><span>Скорость</span><b id="speedValue">0.0 км/ч</b></div>
+  </section>
+
+  <section class="hud controls-help">
+    <b>Управление</b>
+    <span>WASD / стрелки — движение</span>
+    <span>Shift — бег</span>
+    <span>E — станция</span>
+  </section>
+
+  <div id="stationModal" class="modal hidden">
+    <div class="modal-card">
+      <button id="closeModal" class="close" aria-label="Закрыть">×</button>
+      <small>REPAIR STATION</small>
+      <h2 id="stationName">Repair Station</h2>
+      <p id="stationStatus"></p>
+      <div id="stationEquipment" class="chips"></div>
+      <p class="distance" id="stationDistance"></p>
+    </div>
+  </div>
+
+  <div class="mobile-controls" aria-label="Мобильное управление">
+    <button data-key="ArrowUp">▲</button>
+    <div>
+      <button data-key="ArrowLeft">◀</button>
+      <button id="runBtn">RUN</button>
+      <button data-key="ArrowRight">▶</button>
+    </div>
+    <button data-key="ArrowDown">▼</button>
+    <button id="interactBtn" class="interact">E</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./game.js"></script>
+</body>
+</html>
