@@ -1,5 +1,3 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-
 const SUPABASE_URL='https://fbyzaovfjnagwmvczxjs.supabase.co';
 const SUPABASE_KEY='sb_publishable_kVGtNH6M4Z3qtPXDKO3j_w_-kk19zwd';
 const ORIGIN={lat:52.231823780917104,lng:20.9849785985799};
