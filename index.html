@@ -1654,6 +1654,19 @@ async function loadMyActions(){
  if(error){console.error(error);myActionsList.innerHTML='<div class="adminmsg" style="margin-top:12px">Не удалось загрузить действия.</div>';return}
  myActionsData=data||[];document.getElementById('uAllCount').textContent=myActionsData.length;document.getElementById('uReportCount').textContent=myActionsData.filter(x=>x.item_type==='report').length;document.getElementById('uPhotoCount').textContent=myActionsData.filter(x=>x.item_type==='photo').length;document.getElementById('uStationCount').textContent=myActionsData.filter(x=>x.item_type==='station_submission').length;renderMyActions(document.querySelector('[data-user-tab].active')?.dataset.userTab||'all');return;
 }
+async function activityPhotoUrl(a){
+ const direct=a?.storage_path||a?.photo_path||null;
+ if(direct){const u=await adminSignedPhoto(direct);if(u)return u}
+ if(a?.item_type==='station_submission'&&a?.item_id){
+  const {data:s}=await db.from('station_submissions').select('photo_path').eq('id',a.item_id).maybeSingle();
+  if(s?.photo_path){const u=await adminSignedPhoto(s.photo_path);if(u)return u}
+ }
+ if(a?.station_id){
+  const {data:p}=await db.from('station_photos').select('storage_path').eq('station_id',a.station_id).eq('moderation_status','approved').order('created_at',{ascending:false}).limit(1).maybeSingle();
+  if(p?.storage_path){const u=await adminSignedPhoto(p.storage_path);if(u)return u}
+ }
+ return null;
+}
 async function renderMyActions(filter='all'){
  const data=filter==='all'?myActionsData:myActionsData.filter(x=>x.item_type===filter);if(!data.length){myActionsList.innerHTML='<div class="adminmsg" style="margin-top:12px">В этой категории пока пусто.</div>';return}
  const names={report:'💬 Сообщение о станции',photo:'📷 Фото станции',station_submission:'📍 Предложенная станция'};
@@ -1668,7 +1681,8 @@ async function renderMyActions(filter='all'){
   else if(a.item_type==='photo') detail.innerHTML='🔧 '+escapeHtml(stationDisplayName(a.station_name,a.station_id));
   else {const eq=[];if(a.has_tools)eq.push('🛠 Инструменты');if(a.has_pump)eq.push('Насос');detail.innerHTML='📍 '+Number(a.lat).toFixed(6)+', '+Number(a.lng).toFixed(6)+(eq.length?'<br><b>Оснащение:</b> '+escapeHtml(eq.join(' · ')):'')}
   card.appendChild(detail);
-  if(a.storage_path){const {data:u}=await db.storage.from('station-photos').createSignedUrl(a.storage_path,600);if(u?.signedUrl){const img=document.createElement('img');img.className='userphoto';img.src=u.signedUrl;img.alt='Ваше отправленное фото';img.onclick=()=>{lightboxImg.src=u.signedUrl;lightbox.classList.add('open')};card.appendChild(img)}}
+  const activityPhoto=await activityPhotoUrl(a);
+  if(activityPhoto){const img=document.createElement('img');img.className='userphoto';img.src=activityPhoto;img.alt='Фото к этому действию';img.loading='lazy';img.onclick=()=>{lightboxImg.src=activityPhoto;lightbox.classList.add('open')};card.appendChild(img)}
   const meta=document.createElement('div');meta.className='muted';meta.textContent=(states[a.item_status]||a.item_status)+' · '+new Date(a.created_at).toLocaleString('ru-RU');card.appendChild(meta);
   const buttons=document.createElement('div');buttons.className='userbuttons';
   if(Number.isFinite(Number(a.lat))&&Number.isFinite(Number(a.lng))){const m=document.createElement('button');m.className='mapaction';m.textContent='📍 Показать на карте';m.onclick=()=>{myActionsModal.classList.remove('open');showMapPoint(a.lat,a.lng,a.item_type==='station_submission'?'Предложенная Repair Station':'Моё действие',a.item_type==='station_submission'?null:a.station_id);notice('📍 Место вашего действия')};buttons.appendChild(m)}
