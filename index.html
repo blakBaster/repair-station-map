@@ -62,7 +62,7 @@ button,input,textarea{font:inherit}button{transition:background .14s ease,border
 .userbox{width:min(720px,100%);max-height:88vh;border-radius:20px;padding:16px 18px}.userbox::-webkit-scrollbar,.userdetailcard::-webkit-scrollbar{width:7px}.userbox::-webkit-scrollbar-track,.userdetailcard::-webkit-scrollbar-track{background:transparent}.userbox::-webkit-scrollbar-thumb,.userdetailcard::-webkit-scrollbar-thumb{background:#52617755;border-radius:999px}
 .userhead{position:sticky;top:-16px;z-index:4;margin:-16px -18px 0;padding:16px 18px 11px;background:linear-gradient(180deg,#101b2bf5 75%,#101b2b00);backdrop-filter:blur(12px)}.userhead h2{font-size:18px}.userclose{width:34px;height:34px;padding:0;border:1px solid #ffffff0d;border-radius:10px;background:#ffffff0b}
 .profilecard{margin:7px 0 12px;padding:12px;border:1px solid #ffffff12;border-radius:14px;background:linear-gradient(180deg,#ffffff07,#ffffff035)}.profilename{font-size:18px}.profileedit{border:1px solid #ffffff0d;background:#ffffff08}.profilemeta{font-size:11.5px}.profilestats{margin-top:10px;padding-top:9px;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 12px;font-size:12px}.profiledates{grid-column:1/-1;line-height:1.55}.profilereputation{margin-top:0}.profileachievements,.profilebadges{grid-column:1/-1;margin-top:4px}.profileachievementtitle{font-size:12px;margin-bottom:6px}.achievementchip{padding:5px 8px;font-size:11px}.achievementprogress{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.achprog{padding:7px 8px}.userbox>.adminmsg{display:none}.userbox .tabs{gap:6px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding:8px 0 10px}.userbox .tabs::-webkit-scrollbar{display:none}.userbox .tabbtn{padding:7px 10px;font-size:11.5px}
-.userdetailcard{width:min(780px,100%);max-height:88vh;border-radius:20px;padding:16px 18px}.userdetailclose{right:13px;top:11px;width:34px;height:34px;border:1px solid #ffffff0d;border-radius:10px;background:#ffffff08;font-size:18px;line-height:1}.userdetailhead{padding-right:48px}.userdetailhead h2{font-size:20px;margin-bottom:5px}.userdetailmeta{font-size:11.5px;line-height:1.5}.userdetailactions{margin:10px 0;gap:6px}.userdetailactions button{padding:7px 10px;border-radius:9px;font-size:11.5px}.userdetailsection{margin-top:12px;padding-top:11px}.userdetailsection h3{font-size:14px}.useractivitytabs{gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:12px 0 3px;padding-top:11px}.useractivitytabs::-webkit-scrollbar{display:none}.useractivitytabs button{flex:0 0 auto;padding:7px 10px;font-size:11.5px}.userdetailitem,.useractioncard{border:1px solid #ffffff10;background:#ffffff035;border-radius:11px;padding:9px 10px;margin:7px 0}.userdetailitem{font-size:12px}.useractioncard{font-size:12px}.userdetailach span{padding:5px 8px;font-size:11px}
+.userdetailcard{width:min(780px,100%);max-height:88vh;border-radius:20px;padding:16px 18px}.userdetailclose{right:13px;top:11px;width:34px;height:34px;border:1px solid #ffffff0d;border-radius:10px;background:#ffffff08;font-size:18px;line-height:1}.userdetailhead{padding-right:48px}.userdetailhead h2{font-size:20px;margin-bottom:5px}.userdetailmeta{font-size:11.5px;line-height:1.5}.userdetailactions{margin:10px 0;gap:6px}.userdetailactions button{padding:7px 10px;border-radius:9px;font-size:11.5px}.userdetailsection{margin-top:12px;padding-top:11px}.userdetailsection h3{font-size:14px}.useractivitytabs{gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:12px 0 3px;padding-top:11px}.useractivitytabs::-webkit-scrollbar{display:none}.useractivitytabs button{flex:0 0 auto;padding:7px 10px;font-size:11.5px}.userdetailitem,.useractioncard{border:1px solid #ffffff10;background:#ffffff035;border-radius:11px;padding:9px 10px;margin:7px 0}.activity-photo-slot{height:0;overflow:hidden}.userdetailitem{font-size:12px}.useractioncard{font-size:12px}.userdetailach span{padding:5px 8px;font-size:11px}
 @media(max-width:680px){.userbox,.userdetailcard{max-height:94vh;padding:14px;border-radius:18px}.userhead{top:-14px;margin:-14px -14px 0;padding:14px 14px 10px}.profilestats{grid-template-columns:1fr 1fr}.achievementprogress{grid-template-columns:1fr}.profiledates,.profileachievements,.profilebadges{grid-column:1/-1}}
 /* Admin shell refresh */
 .adminmodal{background:rgba(3,8,16,.68);backdrop-filter:blur(4px)}
@@ -1297,7 +1297,7 @@ async function loadApprovedPhotos(stationId){
 function prefetchStationPhotos(stationId){if(!stationPhotoCache.has(String(stationId)))fetchApprovedPhotos(stationId).catch(()=>{})}
 let mobilePhotoWarmupStarted=false;
 async function warmMobileStationPhotos(){
- if(mobilePhotoWarmupStarted||!window.matchMedia('(max-width:800px)').matches||!navigator.onLine)return;
+ if(mobilePhotoWarmupStarted||!navigator.onLine)return;
  mobilePhotoWarmupStarted=true;
  try{
   const {data,error}=await db.from('station_photos').select('id,station_id,storage_path').eq('moderation_status','approved').order('created_at',{ascending:false});
@@ -1412,6 +1412,11 @@ function addMarker(s){
 }
 
 async function loadStations(){
+ const instantCached=JSON.parse(localStorage.getItem('cached_stations')||'[]');
+ if(!stations.length&&instantCached.length){
+  stations=instantCached.map(normalizeStation).filter(s=>Number.isFinite(s.lat)&&Number.isFinite(s.lng));
+  stationMarkers.forEach(m=>m.remove());stationMarkers=[];stations.forEach(addMarker);refreshNearestEquipmentAvailability();document.getElementById('map').classList.remove('map-loading');
+ }
  try{
   const {data,error}=await db.from('stations').select('*').is('archived_at',null).order('id',{ascending:true});
   if(error)throw error;
@@ -1594,9 +1599,14 @@ function openPrimarySurface(kind,el){
  closePrimarySurfaces(kind);
  el.classList.add('open');
 }
-let myActionsData=[];
+let myActionsData=[],myActionsLoadedAt=0,myActionsLoadPromise=null;
 const myActionsModal=document.getElementById('myActionsModal'),myActionsList=document.getElementById('myActionsList');
-document.getElementById('myActions').onclick=async()=>{renderSavedStations();openPrimarySurface('profile',myActionsModal);refreshPasskeyStatus();await loadMyActions()};
+const PERF_CACHE_PREFIX='rsm_perf_'+DEVICE_ID+'_';
+function perfCacheGet(key,maxAge=86400000){try{const x=JSON.parse(localStorage.getItem(PERF_CACHE_PREFIX+key)||'null');return x&&Date.now()-Number(x.time||0)<maxAge?x.data:null}catch{return null}}
+function perfCacheSet(key,data){try{localStorage.setItem(PERF_CACHE_PREFIX+key,JSON.stringify({time:Date.now(),data}))}catch{}}
+function updateMyActionCounts(){document.getElementById('uAllCount').textContent=myActionsData.length;document.getElementById('uReportCount').textContent=myActionsData.filter(x=>x.item_type==='report').length;document.getElementById('uPhotoCount').textContent=myActionsData.filter(x=>x.item_type==='photo').length;document.getElementById('uStationCount').textContent=myActionsData.filter(x=>x.item_type==='station_submission').length}
+function hydrateCachedActions(){if(myActionsData.length)return true;const cached=perfCacheGet('actions');if(!Array.isArray(cached)||!cached.length)return false;myActionsData=cached;updateMyActionCounts();return true}
+document.getElementById('myActions').onclick=()=>{renderSavedStations();openPrimarySurface('profile',myActionsModal);if(hydrateCachedActions())renderMyActions(document.querySelector('[data-user-tab].active')?.dataset.userTab||'all');refreshPasskeyStatus();loadMyActions({background:true})};
 document.getElementById('myActionsClose').onclick=()=>myActionsModal.classList.remove('open');
 myActionsModal.onclick=e=>{if(e.target===myActionsModal)myActionsModal.classList.remove('open')};
 let myProfile=null;
@@ -1663,16 +1673,29 @@ passkeyRecover.onclick=async()=>{
 };
 
 async function initUserProfile(){
- await registerDevice();const p=await loadMyProfile();
+ await registerDevice();
+ const p=await loadMyProfile();
+ const warm=[loadMyProfileStats(),loadMyBadges(),loadMyReputation(),loadMyAchievements(),loadMyAchievementProgress(),loadMyActions({background:true,skipProfile:true})];
+ Promise.allSettled(warm).catch(()=>{});
  if(!p?.display_name&&!localStorage.getItem('repair_station_name_prompt_skipped'))openNameModal();
 }
-setTimeout(initUserProfile,500);
-async function loadMyActions(){
- await Promise.all([loadMyProfile(),loadMyProfileStats(),loadMyBadges(),loadMyReputation(),loadMyAchievements(),loadMyAchievementProgress()]);
- myActionsList.innerHTML='<div class="adminmsg" style="margin-top:12px">Загрузка…</div>';
- const {data,error}=await db.rpc('get_my_recent_actions',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});
- if(error){console.error(error);myActionsList.innerHTML='<div class="adminmsg" style="margin-top:12px">Не удалось загрузить действия.</div>';return}
- myActionsData=data||[];document.getElementById('uAllCount').textContent=myActionsData.length;document.getElementById('uReportCount').textContent=myActionsData.filter(x=>x.item_type==='report').length;document.getElementById('uPhotoCount').textContent=myActionsData.filter(x=>x.item_type==='photo').length;document.getElementById('uStationCount').textContent=myActionsData.filter(x=>x.item_type==='station_submission').length;renderMyActions(document.querySelector('[data-user-tab].active')?.dataset.userTab||'all');return;
+setTimeout(initUserProfile,40);
+async function loadMyActions({background=false,skipProfile=false,force=false}={}){
+ if(!force&&myActionsLoadPromise)return myActionsLoadPromise;
+ if(!force&&Date.now()-myActionsLoadedAt<8000&&myActionsData.length)return myActionsData;
+ hydrateCachedActions();
+ if(myActionsData.length&&myActionsModal.classList.contains('open'))renderMyActions(document.querySelector('[data-user-tab].active')?.dataset.userTab||'all');
+ myActionsLoadPromise=(async()=>{
+  const profileTasks=skipProfile?[]:[loadMyProfile(),loadMyProfileStats(),loadMyBadges(),loadMyReputation(),loadMyAchievements(),loadMyAchievementProgress()];
+  const actionsPromise=db.rpc('get_my_recent_actions',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});
+  const [,result]=await Promise.all([Promise.allSettled(profileTasks),actionsPromise]);
+  const {data,error}=result;
+  if(error){console.error(error);if(!background&&!myActionsData.length)myActionsList.innerHTML='<div class="adminmsg" style="margin-top:12px">Не удалось загрузить действия.</div>';return myActionsData}
+  myActionsData=data||[];myActionsLoadedAt=Date.now();perfCacheSet('actions',myActionsData);updateMyActionCounts();
+  if(myActionsModal.classList.contains('open'))renderMyActions(document.querySelector('[data-user-tab].active')?.dataset.userTab||'all');
+  return myActionsData;
+ })().finally(()=>{myActionsLoadPromise=null});
+ return myActionsLoadPromise;
 }
 async function activityPhotoUrl(a){
  const direct=a?.storage_path||a?.photo_path||null;
@@ -1686,7 +1709,7 @@ async function activityPhotoUrl(a){
  }
  return null;
 }
-async function renderMyActions(filter='all'){
+function renderMyActions(filter='all'){
  const data=filter==='all'?myActionsData:myActionsData.filter(x=>x.item_type===filter);if(!data.length){myActionsList.innerHTML='<div class="adminmsg" style="margin-top:12px">В этой категории пока пусто.</div>';return}
  const names={report:'💬 Сообщение о станции',photo:'📷 Фото станции',station_submission:'📍 Предложенная станция'};
  const states={pending:'Ожидает модерации',approved:'Одобрено',rejected:'Отклонено',published:'Опубликовано'};
@@ -1700,8 +1723,8 @@ async function renderMyActions(filter='all'){
   else if(a.item_type==='photo') detail.innerHTML='🔧 '+escapeHtml(stationDisplayName(a.station_name,a.station_id));
   else {const eq=[];if(a.has_tools)eq.push('🛠 Инструменты');if(a.has_pump)eq.push('Насос');detail.innerHTML='📍 '+Number(a.lat).toFixed(6)+', '+Number(a.lng).toFixed(6)+(eq.length?'<br><b>Оснащение:</b> '+escapeHtml(eq.join(' · ')):'')}
   card.appendChild(detail);
-  const activityPhoto=await activityPhotoUrl(a);
-  if(activityPhoto){const img=document.createElement('img');img.className='userphoto';img.src=activityPhoto;img.alt='Фото к этому действию';img.loading='lazy';img.onclick=()=>{lightboxImg.src=activityPhoto;lightbox.classList.add('open')};card.appendChild(img)}
+  const photoSlot=document.createElement('div');photoSlot.className='activity-photo-slot';card.appendChild(photoSlot);
+  activityPhotoUrl(a).then(activityPhoto=>{if(!activityPhoto||!photoSlot.isConnected)return;const img=document.createElement('img');img.className='userphoto';img.src=activityPhoto;img.alt='Фото к этому действию';img.loading='eager';img.decoding='async';img.onclick=()=>{lightboxImg.src=activityPhoto;lightbox.classList.add('open')};photoSlot.replaceWith(img)}).catch(()=>{if(photoSlot.isConnected)photoSlot.remove()});
   const meta=document.createElement('div');meta.className='muted';meta.textContent=(states[a.item_status]||a.item_status)+' · '+new Date(a.created_at).toLocaleString('ru-RU');card.appendChild(meta);
   const buttons=document.createElement('div');buttons.className='userbuttons';
   if(Number.isFinite(Number(a.lat))&&Number.isFinite(Number(a.lng))){const m=document.createElement('button');m.className='mapaction';m.textContent='📍 Показать на карте';m.onclick=()=>{myActionsModal.classList.remove('open');showMapPoint(a.lat,a.lng,a.item_type==='station_submission'?'Предложенная Repair Station':'Моё действие',a.item_type==='station_submission'?null:a.station_id);notice('📍 Место вашего действия')};buttons.appendChild(m)}
@@ -1750,7 +1773,7 @@ async function refreshAdmin(){
  if(!session){adminBypass=false;adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';return}
  const {data:isAdmin,error}=await db.rpc('is_admin');
  if(error||!isAdmin){await db.auth.signOut();adminLoggedOut.style.display='block';adminLoggedIn.style.display='none';notice('У этого аккаунта нет прав администратора');return}
- adminBypass=true;adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');await Promise.all([loadPublishedStations(),loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadAdminUsers(),loadAuditLog()]);
+ adminBypass=true;adminLoggedOut.style.display='none';adminLoggedIn.style.display='block';document.getElementById('adminIdentity').textContent='Вход выполнен: '+(session.user.email||'администратор');Promise.allSettled([loadPublishedStations(),loadPendingSubmissions(),loadPendingPhotos(),loadDevices(),loadAdminUsers(),loadAuditLog(),refreshAdminDashboard()]).catch(()=>{});
 }
 document.getElementById('adminLogin').onclick=async()=>{
  const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;
@@ -2045,7 +2068,9 @@ document.getElementById('stationEditDelete').onclick=async()=>{
 };
 document.getElementById('confirmWorking').onclick=async()=>{if(!activeStation)return;const btn=document.getElementById('confirmWorking'),stationId=activeStation.id;btn.disabled=true;btn.textContent='Проверяем…';try{await publicAction({action:'confirmation',station_id:stationId})}catch(error){console.error(error);btn.disabled=false;btn.textContent='✓ Всё работает';const msg=String(error.code||error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if(msg.includes('RATE_LIMIT')||msg.includes('IP_RATE_LIMIT'))notice('Эту станцию вы уже недавно подтверждали');else notice('Не удалось подтвердить станцию');return}notice('✓ Спасибо — актуальность станции обновлена');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s);else{btn.disabled=false;btn.textContent='✓ Всё работает'}};
 function renderSavedStations(){for(const [key,id] of [['favorite_stations','favoriteList'],['recent_stations','recentList']]){const box=document.getElementById(id);if(!box)continue;box.innerHTML='';const saved=JSON.parse(localStorage.getItem(key)||'[]').slice(0,5);localStorage.setItem(key,JSON.stringify(saved));for(const sid of saved){const s=stations.find(x=>String(x.id)===String(sid));if(!s)continue;const b=document.createElement('button');const icon=s.has_tools===true?'🔧':(s.has_pump===true?pumpIconMarkup('saved-'+id+'-'+s.id):'');b.innerHTML='<span class="saved-station-icon">'+icon+'</span><span>'+escapeHtml(stationDisplayName(s.name,s.id))+'</span>';b.onclick=()=>{document.getElementById('myActionsModal').classList.remove('open');renderStation(s)};box.appendChild(b)}if(!box.children.length)box.innerHTML='<span class="adminmsg">Пока пусто</span>'}}
-document.getElementById('leaderboardOpen').onclick=async()=>{const box=document.getElementById('leaderboardBox');if(box.classList.toggle('open')){box.innerHTML='<div class="adminmsg">Загрузка…</div>';const {data,error}=await db.rpc('get_leaderboard');if(error){box.textContent='Не удалось загрузить рейтинг';return}box.innerHTML='';(data||[]).forEach((u,i)=>{const r=document.createElement('div');r.className='leaderrow';r.innerHTML='<b class="leaderplace">'+(i<3?['🥇','🥈','🥉'][i]:'#'+(i+1))+'</b><span><b>'+escapeHtml(u.display_name)+'</b><small>'+Number(u.contributions||0)+' полезных действий</small></span><b>'+u.reputation+' <small>очков</small></b>';box.appendChild(r)})}};
+function renderLeaderboard(data){const box=document.getElementById('leaderboardBox');box.innerHTML='';(data||[]).forEach((u,i)=>{const r=document.createElement('div');r.className='leaderrow';r.innerHTML='<b class="leaderplace">'+(i<3?['🥇','🥈','🥉'][i]:'#'+(i+1))+'</b><span><b>'+escapeHtml(u.display_name)+'</b><small>'+Number(u.contributions||0)+' полезных действий</small></span><b>'+u.reputation+' <small>очков</small></b>';box.appendChild(r)});if(!box.children.length)box.innerHTML='<div class="adminmsg">Пока пусто</div>'}
+async function warmLeaderboard(){const {data,error}=await db.rpc('get_leaderboard');if(error)return;perfCacheSet('leaderboard',data||[]);if(document.getElementById('leaderboardBox').classList.contains('open'))renderLeaderboard(data||[])}
+document.getElementById('leaderboardOpen').onclick=()=>{const box=document.getElementById('leaderboardBox');if(!box.classList.toggle('open'))return;const cached=perfCacheGet('leaderboard',300000);if(cached)renderLeaderboard(cached);else box.innerHTML='<div class="adminmsg">Загрузка…</div>';warmLeaderboard()};
 
 function circlePolygon(lng,lat,r=650){const pts=[];for(let i=0;i<=48;i++){const a=i/48*Math.PI*2,dy=r*Math.sin(a)/111320,dx=r*Math.cos(a)/(111320*Math.cos(lat*Math.PI/180));pts.push([lng+dx,lat+dy])}return {type:'Feature',geometry:{type:'Polygon',coordinates:[pts]}}}
 function showCoverageMode(){
@@ -2063,6 +2088,8 @@ map.on('click',e=>{
  if(moderationMarker)closeMapPoint();
 });
 map.on('error',e=>{if(e&&e.error)console.warn(e.error)});
+const runIdle=window.requestIdleCallback||((fn)=>setTimeout(fn,500));
+runIdle(()=>{hydrateCachedActions();warmLeaderboard();warmMobileStationPhotos();db.auth.getSession().then(({data})=>{if(data?.session)refreshAdmin().catch(()=>{})}).catch(()=>{})});
 </script>
 <script>
 if('serviceWorker' in navigator){
