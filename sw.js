@@ -1,5 +1,5 @@
-const CACHE='repair-station-shell-v39';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icons/repair-station-r4.svg'];
+const CACHE='repair-station-shell-v40';
+const SHELL=['./','./index.html','./manifest.webmanifest','./privacy.html','./terms.html','./icons/repair-station-r4.svg'];
 
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)));
