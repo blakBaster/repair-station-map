@@ -1111,30 +1111,33 @@ async function registerDevice(){
  }
  return true;
 }
-async function isDeviceBanned(){
- const {data,error}=await db.rpc('is_device_banned',{p_device_id:DEVICE_ID});
- if(error){console.warn('Ban check:',error);return false}
- return data===true;
+function actionErrorCode(data,error){
+ return String(data?.error||error?.context?.error||error?.message||'ACTION_FAILED');
+}
+async function publicAction(payload){
+ const {data,error}=await db.functions.invoke('public-action',{body:{device_id:DEVICE_ID,device_secret:DEVICE_SECRET,...payload}});
+ if(error||!data?.ok){
+  const e=new Error(actionErrorCode(data,error));
+  e.code=actionErrorCode(data,error);
+  e.waitSeconds=Number(data?.wait_seconds||error?.context?.wait_seconds||0);
+  throw e;
+ }
+ return data;
 }
 async function guardDevice(actionType){
- if(await isDeviceBanned()){notice('🚫 Это устройство заблокировано');return false}
- const {data,error}=await db.rpc('check_device_rate_limit',{p_device_id:DEVICE_ID,p_action_type:actionType});
- if(error){
-  console.warn('Rate limit check:',error);
-  if(String(error.message||'').includes('DEVICE_BANNED')){notice('🚫 Это устройство заблокировано');return false}
-  notice('Не удалось проверить защиту. Попробуйте ещё раз.');return false;
+ try{
+  const data=await publicAction({action:'guard',action_type:actionType});
+  if(data.banned){notice('🚫 Это устройство заблокировано');return false}
+  const seconds=Math.max(0,Number(data.wait_seconds)||0);
+  if(seconds>0){notice('⏳ Подождите ещё '+Math.ceil(seconds/60)+' мин.');return false}
+  return true;
+ }catch(e){
+  console.warn('Device guard:',e);
+  if(String(e.code||e.message).includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');
+  else if(String(e.code||e.message).includes('INVALID_DEVICE_SECRET'))notice('Профиль требует восстановления');
+  else notice('Не удалось проверить защиту. Попробуйте ещё раз.');
+  return false;
  }
- const seconds=Math.max(0,Number(data)||0);
- if(seconds>0){
-  const min=Math.ceil(seconds/60);
-  notice('⏳ Подождите ещё '+min+' мин.');return false;
- }
- return true;
-}
-async function logDeviceActivity(actionType,stationId=null){
- const {error}=await db.rpc('log_device_activity',{p_device_id:DEVICE_ID,p_action_type:actionType,p_station_id:stationId});
- if(error)console.warn('Device activity:',error);
- return !error;
 }
 registerDevice();
 const SPAM_LIMITS={report:5*60*1000,photo:10*60*1000,station:10*60*1000};
@@ -1426,12 +1429,12 @@ function closeReportModal(){reportModal.classList.remove('open');reportStatus=''
 document.getElementById('alertBtn').onclick=async()=>{if(!spamAllowed('report'))return;if(!await guardDevice('report'))return;document.getElementById('reportStationName').textContent=stationTitle.textContent;reportHint.textContent='Выберите состояние';openPrimarySurface('report',reportModal)};
 document.getElementById('reportClose').onclick=closeReportModal;reportModal.onclick=e=>{if(e.target===reportModal)closeReportModal()};
 reportModal.querySelectorAll('[data-report-status]').forEach(b=>b.onclick=()=>{reportStatus=b.dataset.reportStatus;reportModal.querySelectorAll('[data-report-status]').forEach(x=>x.classList.toggle('active',x===b));reportSend.disabled=false;reportHint.textContent=reportStatus==='working'?'Станция исправна':reportStatus==='partial'?'Укажите, что работает не полностью':'Можно описать поломку'});
-reportSend.onclick=async()=>{if(!activeStation||!reportStatus)return;const stationId=activeStation.id,status=reportStatus,defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'},finalMessage=(reportMessage.value.trim()||defaults[status]).slice(0,500);reportSend.disabled=true;reportSend.textContent='Отправляем…';const {error}=await db.rpc('submit_station_report',{p_device_id:DEVICE_ID,p_station_id:stationId,p_status:status,p_message:finalMessage});reportSend.textContent='Отправить';if(error){console.error(error);reportSend.disabled=false;const msg=String(error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if(msg.includes('RATE_LIMIT:')){const sec=Number((msg.match(/RATE_LIMIT:(\d+)/)||[])[1]||0);notice('⏳ Подождите ещё '+Math.max(1,Math.ceil(sec/60))+' мин.')}else notice('Не удалось отправить сообщение');return}markSpamAction('report');closeReportModal();notice('Спасибо! Состояние обновлено ✓');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s)};
+reportSend.onclick=async()=>{if(!activeStation||!reportStatus)return;const stationId=activeStation.id,status=reportStatus,defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'},finalMessage=(reportMessage.value.trim()||defaults[status]).slice(0,500);reportSend.disabled=true;reportSend.textContent='Отправляем…';let error=null;try{await publicAction({action:'report',station_id:stationId,status,message:finalMessage})}catch(e){error=e}reportSend.textContent='Отправить';if(error){console.error(error);reportSend.disabled=false;const msg=String(error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if(msg.includes('RATE_LIMIT:')){const sec=Number((msg.match(/RATE_LIMIT:(\d+)/)||[])[1]||0);notice('⏳ Подождите ещё '+Math.max(1,Math.ceil(sec/60))+' мин.')}else notice('Не удалось отправить сообщение');return}markSpamAction('report');closeReportModal();notice('Спасибо! Состояние обновлено ✓');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s)};
 const photoInput=document.getElementById('photoInput');
 document.getElementById('photoBtn').onclick=async()=>{if(!spamAllowed('photo'))return;if(!await guardDevice('photo'))return;photoInput.click()};
 async function signedPhotoUpload(file,kind,stationId=null){
  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,10)||'jpg';
- const {data:permit,error:permitError}=await db.functions.invoke('create-photo-upload',{body:{device_id:DEVICE_ID,kind,station_id:stationId,extension:ext}});
+ const {data:permit,error:permitError}=await db.functions.invoke('create-photo-upload',{body:{device_id:DEVICE_ID,device_secret:DEVICE_SECRET,kind,station_id:stationId,extension:ext}});
  if(permitError||!permit?.path||!permit?.token){
   const detail=permit?.error||permitError?.context?.error||permitError?.message||'UPLOAD_PERMISSION_FAILED';
   throw new Error('UPLOAD_PERMISSION: '+detail);
@@ -1444,7 +1447,7 @@ photoInput.onchange=async()=>{
  const files=[...(photoInput.files||[])].slice(0,2);if(!files.length)return;if((photoInput.files||[]).length>2)notice('Можно отправить максимум 2 фото');
  async function optimize(file){if(!file.type.startsWith('image/'))throw new Error('TYPE');if(file.size>20*1024*1024)throw new Error('SIZE');try{const bmp=await createImageBitmap(file,{imageOrientation:'from-image'});const max=1920,scale=Math.min(1,max/Math.max(bmp.width,bmp.height));const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*scale);cv.height=Math.round(bmp.height*scale);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.84));bmp.close();return new File([blob],(file.name.replace(/\.[^.]+$/,'')||'photo')+'.jpg',{type:'image/jpeg'})}catch{return file}}
  notice('Подготавливаем '+files.length+' фото…');let ok=0;
- for(const original of files){try{const file=await optimize(original);const path=await signedPhotoUpload(file,'photo',activeStation.id);const {error}=await db.rpc('submit_station_photo',{p_device_id:DEVICE_ID,p_station_id:activeStation.id,p_storage_path:path});if(error)throw error;ok++}catch(e){console.error(e)}}
+ for(const original of files){try{const file=await optimize(original);const path=await signedPhotoUpload(file,'photo',activeStation.id);await publicAction({action:'photo',station_id:activeStation.id,storage_path:path});ok++}catch(e){console.error(e)}}
  photoInput.value='';if(ok){markSpamAction('photo');notice(ok===1?'Фото отправлено на модерацию ✓':ok+' фото отправлены на модерацию ✓')}else notice('Не удалось отправить фото');
 };
 function closeStationCard(){
@@ -1517,7 +1520,7 @@ document.getElementById('suggestSend').onclick=async()=>{
   if(adminBypass){
    ({error}=await db.rpc('admin_create_station',{p_lat:payload.lat,p_lng:payload.lng,p_has_tools:payload.has_tools,p_has_rack:payload.has_rack,p_has_pump:payload.has_pump}));
   }else{
-   ({error}=await db.rpc('submit_station_submission',{p_device_id:DEVICE_ID,p_lat:payload.lat,p_lng:payload.lng,p_has_tools:payload.has_tools,p_has_rack:payload.has_rack,p_has_pump:payload.has_pump,p_photo_path:payload.photo_path}));
+   try{await publicAction({action:'station_submission',lat:payload.lat,lng:payload.lng,has_tools:payload.has_tools,has_rack:payload.has_rack,has_pump:payload.has_pump,photo_path:payload.photo_path});error=null}catch(e){error=e}
   }
   if(error)throw new Error((adminBypass?'ADMIN_STATION_CREATE: ':'SUBMISSION_INSERT: ')+error.message);
   localStorage.removeItem('pending_station_suggestion');suggesting=false;suggestBox.classList.remove('open');pickPin.classList.remove('show');suggestPhoto.value='';suggestPreview.classList.remove('show');suggestPreview.removeAttribute('src');
@@ -1595,10 +1598,10 @@ let myProfile=null;
 const nameModal=document.getElementById('nameModal'),nameInput=document.getElementById('nameInput'),profileName=document.getElementById('profileName'),profileMeta=document.getElementById('profileMeta');
 function renderProfile(){profileName.textContent=myProfile?.display_name||'Без имени';profileMeta.textContent=myProfile?.display_name?'Профиль Repair Station':'Имя пока не указано';document.getElementById('psBadge').textContent=myProfile?.badge||'пока нет'}
 function profileDate(v,withTime=false){if(!v)return '—';const d=new Date(v);return withTime?d.toLocaleString('ru-RU',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'})}
-async function loadMyBadges(){const {data,error}=await db.rpc('get_my_badges',{p_device_id:DEVICE_ID});if(error){console.error('get_my_badges:',error);return}const labels={star:'⭐ Звезда',medal:'🏅 Медаль',ribbon:'🎖️ Лента'},el=document.getElementById('psBadge');el.textContent=(data&&data.length)?data.map(x=>labels[x.badge_type]||x.badge_type).join(' · '):'пока нет'}
-async function loadMyReputation(){const {data,error}=await db.rpc('get_my_reputation',{p_device_id:DEVICE_ID});if(error){console.error('get_my_reputation:',error);return}document.getElementById('psReputation').textContent=Number(data||0)}
-async function loadMyAchievements(){const {data,error}=await db.rpc('get_my_achievements',{p_device_id:DEVICE_ID});if(error){console.error('get_my_achievements:',error);return}const el=document.getElementById('psAchievements');if(!data?.length){el.innerHTML='<span class="achievementempty">Пока нет достижений</span>';return}const tierGroups=[['photographer','📸 Фотограф'],['explorer','📍 Разведчик'],['reporter','💬 Наблюдатель'],['checker','✓ Проверяющий'],['helper','🤝 Помощник']],special={detailed_inspection:'🖼️ Детальный осмотр',auditor:'🔍 Аудитор',expert_expertness:'🧐 Эксперт по экспертности',according_to_plan:'📋 Всё по плану',checked_everything:'🤓 Я здесь всё проверил'},owned=new Map(data.map(a=>[a.achievement_key,a]));const chips=[];for(const [prefix,label] of tierGroups){let level=0,last=null;for(let i=1;i<=3;i++){const a=owned.get(prefix+'_'+i);if(a){level=i;last=a}}if(level)chips.push('<span class="achievementchip" title="'+escapeHtml(last?new Date(last.unlocked_at).toLocaleString('ru-RU'):'')+'">'+escapeHtml(label+' '+level+'/3')+'</span>')}for(const a of data){if(special[a.achievement_key])chips.push('<span class="achievementchip" title="'+escapeHtml(new Date(a.unlocked_at).toLocaleString('ru-RU'))+'">'+escapeHtml(special[a.achievement_key])+'</span>')}el.innerHTML=chips.join('')||'<span class="achievementempty">Пока нет достижений</span>'}
-async function loadMyAchievementProgress(){const {data:p,error}=await db.rpc('get_my_achievement_progress',{p_device_id:DEVICE_ID});if(error){console.error('get_my_achievement_progress:',error);return}const el=document.getElementById('psAchievementProgress');if(!el||!p)return;const row=(icon,name,current,next,desc)=>{const max=next==null,target=max?Math.max(1,current):next,pct=max?100:Math.min(100,Math.round((current/target)*100)),left=max?0:Math.max(0,target-current);return '<div class="achprog"><div class="achproghead"><span>'+icon+' '+name+'</span><span class="'+(max?'achmax':'')+'">'+(max?'Макс. ✓':current+' / '+target)+'</span></div><div class="achprogsub">'+desc+(max?'':' · осталось '+left)+'</div><div class="achbar"><i style="width:'+pct+'%"></i></div></div>'};el.innerHTML=row('✓','Проверяющий',Number(p.confirmations||0),p.checker_next,'Подтверждать, что станция работает')+row('💬','Наблюдатель',Number(p.reports||0),p.reporter_next,'Сообщать о поломках и состоянии')+row('📸','Фотограф',Number(p.photo_stations||0),p.photographer_next,'Добавлять фото разных станций')+row('📍','Разведчик',Number(p.approved_stations||0),p.explorer_next,'Находить и добавлять новые станции')+row('🖼️','Детальный осмотр',Number(p.max_photos_one_station||0),Number(p.detailed_inspection_target||5),'Собрать 5 полезных фото одной станции')+row('🤝','Помощник',Number(p.contributions||0),p.helper_next,'Любая полезная активность на карте')}
+async function loadMyBadges(){const {data,error}=await db.rpc('get_my_badges',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_badges:',error);return}const labels={star:'⭐ Звезда',medal:'🏅 Медаль',ribbon:'🎖️ Лента'},el=document.getElementById('psBadge');el.textContent=(data&&data.length)?data.map(x=>labels[x.badge_type]||x.badge_type).join(' · '):'пока нет'}
+async function loadMyReputation(){const {data,error}=await db.rpc('get_my_reputation',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_reputation:',error);return}document.getElementById('psReputation').textContent=Number(data||0)}
+async function loadMyAchievements(){const {data,error}=await db.rpc('get_my_achievements',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_achievements:',error);return}const el=document.getElementById('psAchievements');if(!data?.length){el.innerHTML='<span class="achievementempty">Пока нет достижений</span>';return}const tierGroups=[['photographer','📸 Фотограф'],['explorer','📍 Разведчик'],['reporter','💬 Наблюдатель'],['checker','✓ Проверяющий'],['helper','🤝 Помощник']],special={detailed_inspection:'🖼️ Детальный осмотр',auditor:'🔍 Аудитор',expert_expertness:'🧐 Эксперт по экспертности',according_to_plan:'📋 Всё по плану',checked_everything:'🤓 Я здесь всё проверил'},owned=new Map(data.map(a=>[a.achievement_key,a]));const chips=[];for(const [prefix,label] of tierGroups){let level=0,last=null;for(let i=1;i<=3;i++){const a=owned.get(prefix+'_'+i);if(a){level=i;last=a}}if(level)chips.push('<span class="achievementchip" title="'+escapeHtml(last?new Date(last.unlocked_at).toLocaleString('ru-RU'):'')+'">'+escapeHtml(label+' '+level+'/3')+'</span>')}for(const a of data){if(special[a.achievement_key])chips.push('<span class="achievementchip" title="'+escapeHtml(new Date(a.unlocked_at).toLocaleString('ru-RU'))+'">'+escapeHtml(special[a.achievement_key])+'</span>')}el.innerHTML=chips.join('')||'<span class="achievementempty">Пока нет достижений</span>'}
+async function loadMyAchievementProgress(){const {data:p,error}=await db.rpc('get_my_achievement_progress',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_achievement_progress:',error);return}const el=document.getElementById('psAchievementProgress');if(!el||!p)return;const row=(icon,name,current,next,desc)=>{const max=next==null,target=max?Math.max(1,current):next,pct=max?100:Math.min(100,Math.round((current/target)*100)),left=max?0:Math.max(0,target-current);return '<div class="achprog"><div class="achproghead"><span>'+icon+' '+name+'</span><span class="'+(max?'achmax':'')+'">'+(max?'Макс. ✓':current+' / '+target)+'</span></div><div class="achprogsub">'+desc+(max?'':' · осталось '+left)+'</div><div class="achbar"><i style="width:'+pct+'%"></i></div></div>'};el.innerHTML=row('✓','Проверяющий',Number(p.confirmations||0),p.checker_next,'Подтверждать, что станция работает')+row('💬','Наблюдатель',Number(p.reports||0),p.reporter_next,'Сообщать о поломках и состоянии')+row('📸','Фотограф',Number(p.photo_stations||0),p.photographer_next,'Добавлять фото разных станций')+row('📍','Разведчик',Number(p.approved_stations||0),p.explorer_next,'Находить и добавлять новые станции')+row('🖼️','Детальный осмотр',Number(p.max_photos_one_station||0),Number(p.detailed_inspection_target||5),'Собрать 5 полезных фото одной станции')+row('🤝','Помощник',Number(p.contributions||0),p.helper_next,'Любая полезная активность на карте')}
 async function loadMyProfileStats(){const {data,error}=await db.rpc('get_my_profile_stats',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile_stats:',error);return}const s=Array.isArray(data)?data[0]:data;if(!s)return;document.getElementById('psReports').textContent=Number(s.reports_total||0);document.getElementById('psPhotos').textContent=Number(s.photos_total||0);document.getElementById('psPhotosApproved').textContent=Number(s.photos_approved||0);document.getElementById('psStations').textContent=Number(s.stations_total||0);document.getElementById('psStationsApproved').textContent=Number(s.stations_approved||0);document.getElementById('psSince').textContent=profileDate(s.active_since);document.getElementById('psLast').textContent=profileDate(s.last_activity,true)}
 async function loadMyProfile(){const {data,error}=await db.rpc('get_my_profile',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET});if(error){console.error('get_my_profile:',error);return null}myProfile=Array.isArray(data)?(data[0]||null):data;renderProfile();return myProfile}
 function openNameModal(){closePrimarySurfaces();nameInput.value=myProfile?.display_name||'';nameModal.classList.add('open');setTimeout(()=>nameInput.focus(),80)}
@@ -2036,7 +2039,7 @@ document.getElementById('stationEditDelete').onclick=async()=>{
  const rec=JSON.parse(localStorage.getItem('recent_stations')||'[]').filter(x=>String(x)!==String(s.id));localStorage.setItem('recent_stations',JSON.stringify(rec));
  notice('Станция #'+s.id+' удалена');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()]);
 };
-document.getElementById('confirmWorking').onclick=async()=>{if(!activeStation)return;if(!await guardDevice('report'))return;const btn=document.getElementById('confirmWorking'),stationId=activeStation.id;btn.disabled=true;btn.textContent='Проверяем…';const {error}=await db.rpc('confirm_station_working',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET,p_station_id:stationId});if(error){console.error(error);btn.disabled=false;btn.textContent='✓ Всё работает';const msg=String(error.message||'');notice(msg.includes('RATE_LIMIT')?'Вы уже недавно подтверждали эту станцию':'Не удалось подтвердить станцию');return}notice('✓ Спасибо — актуальность станции обновлена');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s);else{btn.disabled=false;btn.textContent='✓ Всё работает'}};
+document.getElementById('confirmWorking').onclick=async()=>{if(!activeStation)return;const btn=document.getElementById('confirmWorking'),stationId=activeStation.id;btn.disabled=true;btn.textContent='Проверяем…';try{await publicAction({action:'confirmation',station_id:stationId})}catch(error){console.error(error);btn.disabled=false;btn.textContent='✓ Всё работает';const msg=String(error.code||error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if(msg.includes('RATE_LIMIT')||msg.includes('IP_RATE_LIMIT'))notice('Эту станцию вы уже недавно подтверждали');else notice('Не удалось подтвердить станцию');return}notice('✓ Спасибо — актуальность станции обновлена');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s);else{btn.disabled=false;btn.textContent='✓ Всё работает'}};
 function renderSavedStations(){for(const [key,id] of [['favorite_stations','favoriteList'],['recent_stations','recentList']]){const box=document.getElementById(id);if(!box)continue;box.innerHTML='';const saved=JSON.parse(localStorage.getItem(key)||'[]').slice(0,5);localStorage.setItem(key,JSON.stringify(saved));for(const sid of saved){const s=stations.find(x=>String(x.id)===String(sid));if(!s)continue;const b=document.createElement('button');b.textContent=(s.has_tools?'🔧':'💨')+' '+stationDisplayName(s.name,s.id);b.onclick=()=>{document.getElementById('myActionsModal').classList.remove('open');renderStation(s)};box.appendChild(b)}if(!box.children.length)box.innerHTML='<span class="adminmsg">Пока пусто</span>'}}
 document.getElementById('leaderboardOpen').onclick=async()=>{const box=document.getElementById('leaderboardBox');if(box.classList.toggle('open')){box.innerHTML='<div class="adminmsg">Загрузка…</div>';const {data,error}=await db.rpc('get_leaderboard');if(error){box.textContent='Не удалось загрузить рейтинг';return}box.innerHTML='';(data||[]).forEach((u,i)=>{const r=document.createElement('div');r.className='leaderrow';r.innerHTML='<b class="leaderplace">'+(i<3?['🥇','🥈','🥉'][i]:'#'+(i+1))+'</b><span><b>'+escapeHtml(u.display_name)+'</b><small>'+Number(u.contributions||0)+' полезных действий</small></span><b>'+u.reputation+' <small>очков</small></b>';box.appendChild(r)})}};
 
