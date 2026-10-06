@@ -1217,7 +1217,7 @@ async function loadAlert(stationId){
   if(!r){alertText.textContent='Сообщений пока нет';alertDate.textContent='Будьте первым, кто проверит эту станцию';return}
   alertText.textContent=r.message||'Без комментария';
   alertDate.textContent=relativeCommunityTime(r.created_at)+(rows.length>1?' · ещё '+(rows.length-1)+' недавн. сообщ.':'');
-  const [cls,label]=statusInfo(r.status);stationStatus.className='statuspill '+cls;stationStatus.textContent=label;lastChecked.textContent=checkedText(r.created_at);
+  const [cls,label]=statusInfo(r.status);stationStatus.className='statuspill '+cls;stationStatus.textContent=label;
  }catch(e){console.error('loadAlert',e);if(activeStation&&String(activeStation.id)===String(stationId)){alertText.textContent='Не удалось загрузить сообщения';alertDate.textContent=''}}
 }
 let pendingDeletePhoto=null,currentLightboxPhoto=null;
