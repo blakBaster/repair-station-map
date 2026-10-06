@@ -1167,7 +1167,7 @@ function normalizeStation(s){
  if(typeof equipment==='string'){try{equipment=JSON.parse(equipment)}catch{equipment=equipment.split(',').map(x=>x.trim()).filter(Boolean)}}
  if(!Array.isArray(equipment))equipment=fallbackStation.equipment;
  equipment=equipment.filter(x=>!String(x).toLowerCase().includes('стой'));
- return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,has_tools:s.has_tools===true,has_rack:s.has_rack===true,has_pump:s.has_pump===true,status:s.status||'unknown',lastChecked:s.last_checked??s.lastChecked??null};
+ return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,has_tools:s.has_tools===true,has_rack:s.has_rack===true,has_pump:s.has_pump===true,status:s.status||'unknown',lastChecked:s.last_checked_at??s.last_checked??s.lastChecked??null};
 }
 // Public station numbers are contiguous display numbers; database ids remain stable internal keys.
 function stationDisplayNumber(id){
@@ -1421,7 +1421,7 @@ function closeReportModal(){reportModal.classList.remove('open');reportStatus=''
 document.getElementById('alertBtn').onclick=async()=>{if(!spamAllowed('report'))return;if(!await guardDevice('report'))return;document.getElementById('reportStationName').textContent=stationTitle.textContent;reportHint.textContent='Выберите состояние';openPrimarySurface('report',reportModal)};
 document.getElementById('reportClose').onclick=closeReportModal;reportModal.onclick=e=>{if(e.target===reportModal)closeReportModal()};
 reportModal.querySelectorAll('[data-report-status]').forEach(b=>b.onclick=()=>{reportStatus=b.dataset.reportStatus;reportModal.querySelectorAll('[data-report-status]').forEach(x=>x.classList.toggle('active',x===b));reportSend.disabled=false;reportHint.textContent=reportStatus==='working'?'Станция исправна':reportStatus==='partial'?'Укажите, что работает не полностью':'Можно описать поломку'});
-reportSend.onclick=async()=>{if(!activeStation||!reportStatus)return;const stationId=activeStation.id,status=reportStatus,defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'},finalMessage=(reportMessage.value.trim()||defaults[status]).slice(0,500);reportSend.disabled=true;reportSend.textContent='Отправляем…';let error=null;try{await publicAction({action:'report',station_id:stationId,status,message:finalMessage})}catch(e){error=e}reportSend.textContent='Отправить';if(error){console.error(error);reportSend.disabled=false;const msg=String(error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if((msg.includes('RATE_LIMIT')||msg.includes('IP_RATE_LIMIT'))){const sec=Number((msg.match(/RATE_LIMIT:(\d+)/)||[])[1]||0);notice('⏳ Подождите ещё '+Math.max(1,Math.ceil(sec/60))+' мин.')}else notice('Не удалось отправить сообщение');return}markSpamAction('report');closeReportModal();notice('Спасибо! Состояние обновлено ✓');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s)};
+reportSend.onclick=async()=>{if(!activeStation||!reportStatus)return;const stationId=activeStation.id,status=reportStatus,defaults={working:'Станция работает',partial:'Станция работает частично',broken:'Станция не работает'},finalMessage=(reportMessage.value.trim()||defaults[status]).slice(0,500);reportSend.disabled=true;reportSend.textContent='Отправляем…';let error=null;try{await stationProximityAction('report',{station_id:stationId,status,message:finalMessage})}catch(e){error=e}reportSend.textContent='Отправить';if(error){console.error(error);reportSend.disabled=false;const msg=String(error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if((msg.includes('RATE_LIMIT')||msg.includes('IP_RATE_LIMIT'))){const sec=Number((msg.match(/RATE_LIMIT:(\d+)/)||[])[1]||0);notice('⏳ Подождите ещё '+Math.max(1,Math.ceil(sec/60))+' мин.')}else notice('Не удалось отправить сообщение');return}markSpamAction('report');closeReportModal();notice('Спасибо! Состояние обновлено ✓');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s)};
 const photoInput=document.getElementById('photoInput');
 document.getElementById('photoBtn').onclick=async()=>{if(!spamAllowed('photo'))return;if(!await guardDevice('photo'))return;photoInput.click()};
 async function signedPhotoUpload(file,kind,stationId=null){
@@ -1439,7 +1439,7 @@ photoInput.onchange=async()=>{
  const files=[...(photoInput.files||[])].slice(0,2);if(!files.length)return;if((photoInput.files||[]).length>2)notice('Можно отправить максимум 2 фото');
  async function optimize(file){if(!file.type.startsWith('image/'))throw new Error('TYPE');if(file.size>20*1024*1024)throw new Error('SIZE');try{const bmp=await createImageBitmap(file,{imageOrientation:'from-image'});const max=1920,scale=Math.min(1,max/Math.max(bmp.width,bmp.height));const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*scale);cv.height=Math.round(bmp.height*scale);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.84));bmp.close();return new File([blob],(file.name.replace(/\.[^.]+$/,'')||'photo')+'.jpg',{type:'image/jpeg'})}catch{return file}}
  notice('Подготавливаем '+files.length+' фото…');let ok=0;
- for(const original of files){try{const file=await optimize(original);const path=await signedPhotoUpload(file,'photo',activeStation.id);await publicAction({action:'photo',station_id:activeStation.id,storage_path:path});ok++}catch(e){console.error(e)}}
+ for(const original of files){try{const file=await optimize(original);const path=await signedPhotoUpload(file,'photo',activeStation.id);await stationProximityAction('photo',{station_id:activeStation.id,storage_path:path});ok++}catch(e){console.error(e)}}
  photoInput.value='';if(ok){markSpamAction('photo');notice(ok===1?'Фото отправлено на модерацию ✓':ok+' фото отправлены на модерацию ✓')}else notice('Не удалось отправить фото');
 };
 function closeStationCard(){
@@ -1454,7 +1454,7 @@ function closeStationCard(){
 document.getElementById('close').onclick=closeStationCard;
 document.getElementById('route').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${activeStation.lat},${activeStation.lng}`,'_blank');
 
-let userMarker=null,currentUserLngLat=null,locationWatchId=null;
+let userMarker=null,currentUserLngLat=null,currentUserAccuracy=null,currentUserLocationAt=0,locationWatchId=null;
 function distanceMeters(lat1,lng1,lat2,lng2){const R=6371000,toRad=x=>x*Math.PI/180;const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(a))}
 function formatDistance(m){return m<1000?Math.round(m)+' м':(m/1000).toFixed(m<10000?1:0).replace('.',',')+' км'}
 function closeMapPoint(){if(moderationMarker){moderationMarker.remove();moderationMarker=null}document.getElementById('mapPeekClose')?.classList.remove('show')}
@@ -1469,7 +1469,28 @@ function showMapPoint(lat,lng,title='Отмеченное место',stationId=
 }
 document.getElementById('mapPeekClose').onclick=()=>{closeMapPoint();if(panel.classList.contains('open'))panel.classList.remove('open');notice('Просмотр места закрыт')};
 
-function setUserLocation(p,fly=true){const ll=[p.coords.longitude,p.coords.latitude];currentUserLngLat=ll;if(userMarker)userMarker.setLngLat(ll);else{const u=document.createElement('div');u.className='user-location-marker';u.innerHTML='<span class="user-location-dot"></span>';userMarker=new maplibregl.Marker({element:u}).setLngLat(ll).addTo(map)}refreshStationDistances();if(activeStation)stationDistance.textContent='📍 '+formatDistance(distanceMeters(ll[1],ll[0],activeStation.lat,activeStation.lng))+' от вас';if(fly)map.flyTo({center:ll,zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true});return ll}
+function setUserLocation(p,fly=true){const ll=[p.coords.longitude,p.coords.latitude];currentUserLngLat=ll;currentUserAccuracy=Number.isFinite(Number(p.coords.accuracy))?Math.max(0,Number(p.coords.accuracy)):null;currentUserLocationAt=Date.now();if(userMarker)userMarker.setLngLat(ll);else{const u=document.createElement('div');u.className='user-location-marker';u.innerHTML='<span class="user-location-dot"></span>';userMarker=new maplibregl.Marker({element:u}).setLngLat(ll).addTo(map)}refreshStationDistances();if(activeStation)stationDistance.textContent='📍 '+formatDistance(distanceMeters(ll[1],ll[0],activeStation.lat,activeStation.lng))+' от вас';if(fly)map.flyTo({center:ll,zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true});return ll}
+async function getActionLocation(){
+ if(!navigator.geolocation)throw new Error('LOCATION_REQUIRED');
+ if(currentUserLngLat&&currentUserLocationAt&&Date.now()-currentUserLocationAt<60000){
+   return {lat:currentUserLngLat[1],lng:currentUserLngLat[0],accuracy:currentUserAccuracy};
+ }
+ return await new Promise((resolve,reject)=>{
+   navigator.geolocation.getCurrentPosition(p=>{
+     setUserLocation(p,false);
+     resolve({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:Number.isFinite(Number(p.coords.accuracy))?Math.max(0,Number(p.coords.accuracy)):null});
+   },()=>reject(new Error('LOCATION_REQUIRED')),{enableHighAccuracy:true,timeout:12000,maximumAge:15000});
+ });
+}
+async function stationProximityAction(action,payload){
+ const loc=await getActionLocation();let data,error;
+ if(action==='confirmation')({data,error}=await db.rpc('confirm_station_working',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET,p_station_id:Number(payload.station_id),p_lat:loc.lat,p_lng:loc.lng,p_accuracy:loc.accuracy}));
+ else if(action==='report')({data,error}=await db.rpc('submit_station_report',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET,p_station_id:Number(payload.station_id),p_message:String(payload.message||''),p_status:String(payload.status||''),p_lat:loc.lat,p_lng:loc.lng,p_accuracy:loc.accuracy}));
+ else if(action==='photo')({data,error}=await db.rpc('submit_station_photo',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET,p_station_id:Number(payload.station_id),p_storage_path:String(payload.storage_path||''),p_lat:loc.lat,p_lng:loc.lng,p_accuracy:loc.accuracy}));
+ else throw new Error('UNKNOWN_ACTION');
+ if(error){const msg=String(error.message||'ACTION_FAILED');const e=new Error(msg);e.code=msg;throw e}
+ return data;
+}
 function ensureLocationTracking(){if(locationWatchId!==null||!navigator.geolocation)return;locationWatchId=navigator.geolocation.watchPosition(p=>setUserLocation(p,false),()=>{}, {enableHighAccuracy:true,maximumAge:5000,timeout:15000})}
 function getLocation(cb){if(!navigator.geolocation){notice('Геолокация не поддерживается');return}navigator.geolocation.getCurrentPosition(p=>{setUserLocation(p,false);cb(p)},()=>notice('Не удалось получить геолокацию. Разрешите доступ к местоположению.'),{enableHighAccuracy:true,timeout:10000,maximumAge:10000})}
 document.getElementById('gps').onclick=()=>getLocation(p=>{ensureLocationTracking();map.flyTo({center:[p.coords.longitude,p.coords.latitude],zoom:16,pitch:0,duration:760,curve:1.15,speed:1.2,essential:true})});
@@ -2055,7 +2076,7 @@ document.getElementById('stationEditDelete').onclick=async()=>{
  const rec=JSON.parse(localStorage.getItem('recent_stations')||'[]').filter(x=>String(x)!==String(s.id));localStorage.setItem('recent_stations',JSON.stringify(rec));
  notice('Станция #'+s.id+' удалена');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()]);
 };
-document.getElementById('confirmWorking').onclick=async()=>{if(!activeStation)return;const btn=document.getElementById('confirmWorking'),stationId=activeStation.id;btn.disabled=true;btn.textContent='Проверяем…';try{await publicAction({action:'confirmation',station_id:stationId})}catch(error){console.error(error);btn.disabled=false;btn.textContent='✓ Всё работает';const msg=String(error.code||error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if(msg.includes('RATE_LIMIT')||msg.includes('IP_RATE_LIMIT'))notice('Эту станцию вы уже недавно подтверждали');else notice('Не удалось подтвердить станцию');return}notice('✓ Спасибо — актуальность станции обновлена');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s);else{btn.disabled=false;btn.textContent='✓ Всё работает'}};
+document.getElementById('confirmWorking').onclick=async()=>{if(!activeStation)return;const btn=document.getElementById('confirmWorking'),stationId=activeStation.id;btn.disabled=true;btn.textContent='Проверяем…';try{await stationProximityAction('confirmation',{station_id:stationId})}catch(error){console.error(error);btn.disabled=false;btn.textContent='✓ Всё работает';const msg=String(error.code||error.message||'');if(msg.includes('DEVICE_BANNED'))notice('🚫 Это устройство заблокировано');else if(msg.includes('RATE_LIMIT')||msg.includes('IP_RATE_LIMIT'))notice('Эту станцию вы уже недавно подтверждали');else notice('Не удалось подтвердить станцию');return}notice('✓ Спасибо — актуальность станции обновлена');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s);else{btn.disabled=false;btn.textContent='✓ Всё работает'}};
 function renderSavedStations(){for(const [key,id] of [['favorite_stations','favoriteList'],['recent_stations','recentList']]){const box=document.getElementById(id);if(!box)continue;box.innerHTML='';const saved=JSON.parse(localStorage.getItem(key)||'[]').slice(0,5);localStorage.setItem(key,JSON.stringify(saved));for(const sid of saved){const s=stations.find(x=>String(x.id)===String(sid));if(!s)continue;const b=document.createElement('button');const icon=s.has_tools===true?'🔧':(s.has_pump===true?pumpIconMarkup('saved-'+id+'-'+s.id):'');b.innerHTML='<span class="saved-station-icon">'+icon+'</span><span>'+escapeHtml(stationDisplayName(s.name,s.id))+'</span>';b.onclick=()=>{document.getElementById('myActionsModal').classList.remove('open');renderStation(s)};box.appendChild(b)}if(!box.children.length)box.innerHTML='<span class="adminmsg">Пока пусто</span>'}}
 function renderLeaderboard(data){const box=document.getElementById('leaderboardBox');box.innerHTML='';(data||[]).forEach((u,i)=>{const r=document.createElement('div');r.className='leaderrow';r.innerHTML='<b class="leaderplace">'+(i<3?['🥇','🥈','🥉'][i]:'#'+(i+1))+'</b><span><b>'+escapeHtml(u.display_name)+'</b><small>'+Number(u.contributions||0)+' полезных действий</small></span><b>'+u.reputation+' <small>очков</small></b>';box.appendChild(r)});if(!box.children.length)box.innerHTML='<div class="adminmsg">Пока пусто</div>'}
 async function warmLeaderboard(){const {data,error}=await db.rpc('get_leaderboard');if(error)return;perfCacheSet('leaderboard',data||[]);if(document.getElementById('leaderboardBox').classList.contains('open'))renderLeaderboard(data||[])}
