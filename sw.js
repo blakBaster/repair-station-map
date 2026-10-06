@@ -1,4 +1,4 @@
-const CACHE='repair-station-shell-v40';
+const CACHE='repair-station-shell-v41';
 const SHELL=['./','./index.html','./manifest.webmanifest','./privacy.html','./terms.html','./icons/repair-station-r4.svg'];
 
 self.addEventListener('install',event=>{
@@ -19,9 +19,17 @@ self.addEventListener('fetch',event=>{
  // App navigation: network first, cached app shell if offline.
  if(req.mode==='navigate'){
   event.respondWith(fetch(req).then(res=>{
-   if(res.ok){const copy=res.clone();caches.open(CACHE).then(cache=>cache.put('./index.html',copy));}
+   if(res.ok){
+    const copy=res.clone();
+    const key=(url.pathname.endsWith('/repair-station-map/')||url.pathname.endsWith('/index.html'))?'./index.html':req;
+    caches.open(CACHE).then(cache=>cache.put(key,copy));
+   }
    return res;
-  }).catch(()=>caches.match('./index.html')));
+  }).catch(async()=>{
+   const exact=await caches.match(req);
+   if(exact)return exact;
+   return caches.match('./index.html');
+  }));
   return;
  }
 
