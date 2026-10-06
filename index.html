@@ -1024,13 +1024,28 @@ satelliteBtn.onclick=()=>{
 };
 const panel=document.getElementById('panel'), alertText=document.getElementById('alertText'), alertDate=document.getElementById('alertDate');
 const stationTitle=document.getElementById('stationTitle'), stationCoords=document.getElementById('stationCoords'), stationDistance=document.getElementById('stationDistance'), stationTools=document.getElementById('stationTools'), stationStatus=document.getElementById('stationStatus'), lastChecked=document.getElementById('lastChecked'), stationPhotos=document.getElementById('stationPhotos'), lightbox=document.getElementById('lightbox'), lightboxImg=document.getElementById('lightboxImg');
-function getDeviceId(){
- let id=localStorage.getItem('repair_station_device_id');
- if(!id){
-  id=(crypto.randomUUID?crypto.randomUUID():'dev-'+Date.now()+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));
-  localStorage.setItem('repair_station_device_id',id);
+function readAppCookie(name){
+ const prefix=encodeURIComponent(name)+'=';
+ for(const part of String(document.cookie||'').split(';')){
+  const item=part.trim();
+  if(item.startsWith(prefix))return decodeURIComponent(item.slice(prefix.length));
  }
- return id;
+ return null;
+}
+function writeAppCookie(name,value){
+ document.cookie=encodeURIComponent(name)+'='+encodeURIComponent(value)+'; Path=/repair-station-map/; Max-Age=31536000; SameSite=Lax; Secure';
+}
+function persistentValue(storageKey,cookieKey,createValue){
+ let stored=null,cookie=null;
+ try{stored=localStorage.getItem(storageKey)}catch(e){console.warn('Local storage read:',e)}
+ try{cookie=readAppCookie(cookieKey)}catch(e){console.warn('Cookie read:',e)}
+ const value=stored||cookie||createValue();
+ try{if(stored!==value)localStorage.setItem(storageKey,value)}catch(e){console.warn('Local storage write:',e)}
+ try{if(cookie!==value)writeAppCookie(cookieKey,value)}catch(e){console.warn('Cookie write:',e)}
+ return value;
+}
+function getDeviceId(){
+ return persistentValue('repair_station_device_id','repair_station_device_id',()=>crypto.randomUUID?crypto.randomUUID():'dev-'+Date.now()+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));
 }
 function randomDeviceSecret(){
  const bytes=new Uint8Array(32);
@@ -1038,12 +1053,7 @@ function randomDeviceSecret(){
  return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
 }
 function getDeviceSecret(){
- let secret=localStorage.getItem('repair_station_device_secret');
- if(!secret){
-  secret=randomDeviceSecret();
-  localStorage.setItem('repair_station_device_secret',secret);
- }
- return secret;
+ return persistentValue('repair_station_device_secret','repair_station_device_secret',randomDeviceSecret);
 }
 const DEVICE_ID=getDeviceId();
 const DEVICE_SECRET=getDeviceSecret();
