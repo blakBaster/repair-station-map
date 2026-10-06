@@ -1352,7 +1352,7 @@ function renderStation(s){
  const recent=JSON.parse(localStorage.getItem('recent_stations')||'[]').filter(x=>String(x)!==String(s.id));recent.unshift(s.id);localStorage.setItem('recent_stations',JSON.stringify(recent.slice(0,5)));
  const favs=JSON.parse(localStorage.getItem('favorite_stations')||'[]');document.getElementById('favoriteStation').textContent=favs.some(x=>String(x)===String(s.id))?'★ В избранном':'☆ В избранное';
  document.getElementById('adminEditStation').classList.toggle('show',adminBypass===true);
- const age=s.lastChecked?Math.max(0,(Date.now()-new Date(s.lastChecked).getTime())/86400000):999;const freshness=age<1?'сегодня':age<2?'вчера':age<14?Math.floor(age)+' дн. назад':s.lastChecked?new Date(s.lastChecked).toLocaleDateString('ru-RU'):'нет проверок';document.getElementById('stationReliability').textContent=(age<=2?'Актуальность высокая':age<=14?'Актуальность средняя':'Давно не проверяли')+' · '+freshness;
+ const age=s.lastChecked?Math.max(0,(Date.now()-new Date(s.lastChecked).getTime())/86400000):999;const freshness=age<1?'сегодня':age<2?'вчера':age<14?Math.floor(age)+' дн. назад':s.lastChecked?new Date(s.lastChecked).toLocaleDateString('ru-RU'):'нет проверок';document.getElementById('stationReliability').textContent=(age<=2?'Проверено недавно':age<=14?'Проверка устарела':'Давно не проверяли')+' · '+freshness;
  stationTitle.textContent=stationDisplayName(s.name,s.id);
  stationCoords.textContent=`${s.lat}, ${s.lng}`;
  stationDistance.textContent=currentUserLngLat?('📍 '+formatDistance(distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng))+' от вас'):'';
