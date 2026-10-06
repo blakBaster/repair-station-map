@@ -1144,6 +1144,17 @@ function normalizeStation(s){
  equipment=equipment.filter(x=>!String(x).toLowerCase().includes('стой'));
  return {id:s.id,name:s.name||'Repair Station',lat,lng,equipment,has_tools:s.has_tools===true,has_rack:s.has_rack===true,has_pump:s.has_pump===true,status:s.status||'unknown',lastChecked:s.last_checked??s.lastChecked??null};
 }
+// Public station numbers are contiguous display numbers; database ids remain stable internal keys.
+function stationDisplayNumber(id){
+ const ordered=(stations||[]).slice().sort((a,b)=>Number(a.id)-Number(b.id));
+ const i=ordered.findIndex(s=>String(s.id)===String(id));
+ return i>=0?i+1:null;
+}
+function stationDisplayName(name,id,ordinal=null){
+ const base=(String(name||'Repair Station').replace(/\\s*#\\s*\\d+\\s*$/,'').trim()||'Repair Station');
+ const n=ordinal??stationDisplayNumber(id);
+ return n?base+' #'+n:base;
+}
 function equipmentIcon(t){
  const x=t.toLowerCase();
  if(x.includes('насос'))return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 20V8h7v12M7 20h9M9 8V5h5v3M15 11h2.5a2.5 2.5 0 0 1 2.5 2.5V17M18 17h3"/></svg>';
@@ -1301,7 +1312,7 @@ function renderStation(s){
  const favs=JSON.parse(localStorage.getItem('favorite_stations')||'[]');document.getElementById('favoriteStation').textContent=favs.some(x=>String(x)===String(s.id))?'★ В избранном':'☆ В избранное';
  document.getElementById('adminEditStation').classList.toggle('show',adminBypass===true);
  const age=s.lastChecked?Math.max(0,(Date.now()-new Date(s.lastChecked).getTime())/86400000):999;const freshness=age<1?'сегодня':age<2?'вчера':age<14?Math.floor(age)+' дн. назад':s.lastChecked?new Date(s.lastChecked).toLocaleDateString('ru-RU'):'нет проверок';document.getElementById('stationReliability').textContent=(age<=2?'Актуальность высокая':age<=14?'Актуальность средняя':'Давно не проверяли')+' · '+freshness;
- stationTitle.textContent=s.name==='Repair Station #001'?'Repair Station':s.name;
+ stationTitle.textContent=stationDisplayName(s.name,s.id);
  stationCoords.textContent=`${s.lat}, ${s.lng}`;
  stationDistance.textContent=currentUserLngLat?('📍 '+formatDistance(distanceMeters(currentUserLngLat[1],currentUserLngLat[0],s.lat,s.lng))+' от вас'):'';
  const [statusClass,statusLabel]=statusInfo(s.status);stationStatus.className='statuspill '+statusClass;stationStatus.textContent=statusLabel;lastChecked.textContent=checkedText(s.lastChecked);
@@ -1342,7 +1353,7 @@ function addMarker(s){
    <path d="M24.3 21.8l3.7 2.4-1.8 3-3.7-2.5z" fill="url(#pm-${pumpId})" stroke="#343b42" stroke-width=".7"/><path d="M27.4 24.1l1.5-1.2" stroke="#e9edf0" stroke-width=".8"/>
   </svg>`;
  }else{tool.textContent='🔧'}
- pin.appendChild(tool);el.appendChild(pin);el.title=s.name; const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
+ pin.appendChild(tool);el.appendChild(pin);el.title=stationDisplayName(s.name,s.id); const markerStatus=statusInfo(s.status)[0];el.classList.add('marker-'+markerStatus);
  const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map)
  let markerTouchStart=null,markerTouchMoved=false,markerMultiTouch=false,suppressMarkerClickUntil=0;
  el.addEventListener('pointerenter',()=>prefetchStationPhotos(s.id),{passive:true});
@@ -1376,7 +1387,7 @@ async function loadStations(){
  try{
   const {data,error}=await db.from('stations').select('*').is('archived_at',null).order('id',{ascending:true});
   if(error)throw error;
-  stations=(data||[]).map(normalizeStation).filter(s=>Number.isFinite(s.lat)&&Number.isFinite(s.lng));const prev=JSON.parse(localStorage.getItem('cached_stations')||'[]'),favs=JSON.parse(localStorage.getItem('favorite_stations')||'[]');for(const s of data||[]){const o=prev.find(x=>String(x.id)===String(s.id));if(o&&o.status!==s.status&&favs.some(x=>String(x)===String(s.id)))setTimeout(()=>notice('⭐ Избранная #'+s.id+': статус изменился'),500)}localStorage.setItem('cached_stations',JSON.stringify(data||[]));
+  stations=(data||[]).map(normalizeStation).filter(s=>Number.isFinite(s.lat)&&Number.isFinite(s.lng));const prev=JSON.parse(localStorage.getItem('cached_stations')||'[]'),favs=JSON.parse(localStorage.getItem('favorite_stations')||'[]');for(const s of data||[]){const o=prev.find(x=>String(x.id)===String(s.id));if(o&&o.status!==s.status&&favs.some(x=>String(x)===String(s.id)))setTimeout(()=>notice('⭐ '+stationDisplayName(s.name,s.id)+': статус изменился'),500)}localStorage.setItem('cached_stations',JSON.stringify(data||[]));
   if(!stations.length)throw new Error('Таблица stations пуста');
  }catch(e){
   console.warn('Stations fallback:',e);const cached=JSON.parse(localStorage.getItem('cached_stations')||'[]');stations=cached.length?cached.map(normalizeStation):[fallbackStation];notice(cached.length?'Офлайн · показаны сохранённые станции':'Нет соединения');
@@ -1588,8 +1599,8 @@ async function renderMyActions(filter='all'){
   const card=document.createElement('div');card.className='useritem';
   const title=document.createElement('b');title.textContent=names[a.item_type]||'Действие';card.appendChild(title);
   const detail=document.createElement('div');detail.className='userdetail';
-  if(a.item_type==='report') detail.innerHTML='🔧 '+escapeHtml(a.station_name||'Repair Station')+(a.station_id?' #'+escapeHtml(a.station_id):'')+'<br>'+escapeHtml(reportStates[a.report_status]||a.report_status||'')+(a.report_message?'<br><b>Ваш текст:</b> '+escapeHtml(a.report_message):'');
-  else if(a.item_type==='photo') detail.innerHTML='🔧 '+escapeHtml(a.station_name||'Repair Station')+(a.station_id?' #'+escapeHtml(a.station_id):'');
+  if(a.item_type==='report') detail.innerHTML='🔧 '+escapeHtml(stationDisplayName(a.station_name,a.station_id))+'<br>'+escapeHtml(reportStates[a.report_status]||a.report_status||'')+(a.report_message?'<br><b>Ваш текст:</b> '+escapeHtml(a.report_message):'');
+  else if(a.item_type==='photo') detail.innerHTML='🔧 '+escapeHtml(stationDisplayName(a.station_name,a.station_id));
   else {const eq=[];if(a.has_tools)eq.push('🛠 Инструменты');if(a.has_pump)eq.push('Насос');detail.innerHTML='📍 '+Number(a.lat).toFixed(6)+', '+Number(a.lng).toFixed(6)+(eq.length?'<br><b>Оснащение:</b> '+escapeHtml(eq.join(' · ')):'')}
   card.appendChild(detail);
   if(a.storage_path){const {data:u}=await db.storage.from('station-photos').createSignedUrl(a.storage_path,600);if(u?.signedUrl){const img=document.createElement('img');img.className='userphoto';img.src=u.signedUrl;img.alt='Ваше отправленное фото';img.onclick=()=>{lightboxImg.src=u.signedUrl;lightbox.classList.add('open')};card.appendChild(img)}}
@@ -1673,10 +1684,10 @@ function adminStatusLabel(s){return ({approved:'✅ Одобрено',rejected:'
 function adminDetailMapButton(lat,lng,title,stationId=null){if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng)))return '';return '<button class="adminlogout usermapbtn" data-lat="'+Number(lat)+'" data-lng="'+Number(lng)+'" data-title="'+escapeHtml(title)+'" data-station="'+escapeHtml(stationId??'')+'">📍 Показать на карте</button>'}
 async function openAdminUserDetail(u){userDetailModal.classList.add('open');userDetailBody.innerHTML='<div class="adminmsg">Загрузка профиля…</div>';const [{data:d,error},{data:rep}]=await Promise.all([db.rpc('admin_get_user_details',{p_device_id:u.device_id}),db.rpc('get_my_reputation',{p_device_id:u.device_id})]);if(error){console.error(error);userDetailBody.innerHTML='<div class="adminmsg">Не удалось загрузить профиль.</div>';return}const x=d||{},ach={photographer_1:'📸 Фотограф I',photographer_2:'📸 Фотограф II',photographer_3:'📸 Фотограф III',detailed_inspection:'🖼️ Детальный осмотр',explorer_1:'📍 Разведчик I',explorer_2:'📍 Разведчик II',explorer_3:'📍 Разведчик III',reporter_1:'💬 Наблюдатель I',reporter_2:'💬 Наблюдатель II',reporter_3:'💬 Наблюдатель III',checker_1:'✓ Проверяющий I',checker_2:'✓ Проверяющий II',checker_3:'✓ Проверяющий III',helper_1:'🤝 Помощник I',helper_2:'🤝 Помощник II',helper_3:'🤝 Помощник III',auditor:'🔍 Аудитор',expert_expertness:'🧐 Эксперт по экспертности',according_to_plan:'📋 Всё по плану',checked_everything:'🤓 Я здесь всё проверил'},badge={star:'⭐ Звезда',medal:'🏅 Медаль',ribbon:'🎖️ Лента'},dt=v=>v?new Date(v).toLocaleString('ru-RU'):'—';let html='<div class="userdetailhead"><h2>👤 '+escapeHtml(u.display_name||'Без имени')+'</h2><div>⭐ Репутация: <b>'+Number(rep||0)+'</b></div><div class="userdetailmeta">💻 '+escapeHtml(u.device_type||'—')+' · '+escapeHtml(u.os||'—')+' · '+escapeHtml(u.browser||'—')+'<br>🆔 '+escapeHtml(u.device_id)+'<br>🕐 С нами с: '+dt(u.active_since)+'</div></div><div class="userdetailactions"><button id="detailBan" class="'+(u.is_banned?'approve':'reject')+'">'+(u.is_banned?'♻️ Разблокировать':'🚫 Заблокировать')+'</button></div><div class="userdetailsection"><h3>🏆 Достижения</h3><div class="userdetailach">'+((x.achievements||[]).length?(x.achievements||[]).map(a=>'<span>'+escapeHtml(ach[a.achievement_key]||a.achievement_key)+'</span>').join(''):'<span>Пока нет</span>')+'</div></div><div class="userdetailsection"><h3>🎖️ Награды от админа</h3><div class="userdetailach">'+((x.badges||[]).length?(x.badges||[]).map(b=>'<span>'+escapeHtml(badge[b.badge_type]||b.badge_type)+'</span>').join(''):'<span>Пока нет</span>')+'</div></div>';
  html+='<div class="useractivitytabs"><button class="active" data-useractivity="all">Все ('+((x.reports||[]).length+(x.photos||[]).length+(x.stations||[]).length)+')</button><button data-useractivity="reports">💬 Сообщения ('+(x.reports||[]).length+')</button><button data-useractivity="photos">📷 Фото ('+(x.photos||[]).length+')</button><button data-useractivity="stations">📍 Станции ('+(x.stations||[]).length+')</button></div>';
- html+='<div class="userdetailsection useractivitysection" data-usersection="reports"><h3>📝 Сообщения · '+(x.reports||[]).length+'</h3>'+((x.reports||[]).length?(x.reports||[]).map(r=>'<div class="useractioncard"><b>💬 '+escapeHtml(r.station_name||('Станция #'+r.station_id))+'</b><div class="useractionstatus">'+escapeHtml(adminStatusLabel(r.status))+'</div><div class="useractiontext">'+escapeHtml(r.message||'Без текста')+'</div><div class="userdetailmuted">'+dt(r.created_at)+'</div>'+adminDetailMapButton(r.station_lat,r.station_lng,r.station_name||'Станция',r.station_id)+'</div>').join(''):'<div class="userdetailmuted">Пока ничего нет</div>')+'</div>';
+ html+='<div class="userdetailsection useractivitysection" data-usersection="reports"><h3>📝 Сообщения · '+(x.reports||[]).length+'</h3>'+((x.reports||[]).length?(x.reports||[]).map(r=>'<div class="useractioncard"><b>💬 '+escapeHtml(stationDisplayName(r.station_name||'Станция',r.station_id))+'</b><div class="useractionstatus">'+escapeHtml(adminStatusLabel(r.status))+'</div><div class="useractiontext">'+escapeHtml(r.message||'Без текста')+'</div><div class="userdetailmuted">'+dt(r.created_at)+'</div>'+adminDetailMapButton(r.station_lat,r.station_lng,stationDisplayName(r.station_name||'Станция',r.station_id),r.station_id)+'</div>').join(''):'<div class="userdetailmuted">Пока ничего нет</div>')+'</div>';
  html+='<div class="userdetailsection useractivitysection" data-usersection="photos"><h3>📷 Фото · '+(x.photos||[]).length+'</h3><div id="adminUserPhotos">'+((x.photos||[]).length?'':'<div class="userdetailmuted">Пока ничего нет</div>')+'</div></div>';
  html+='<div class="userdetailsection useractivitysection" data-usersection="stations"><h3>📍 Предложенные станции · '+(x.stations||[]).length+'</h3><div id="adminUserStations">'+((x.stations||[]).length?'':'<div class="userdetailmuted">Пока ничего нет</div>')+'</div></div>';userDetailBody.innerHTML=html;
- const photos=document.getElementById('adminUserPhotos');for(const p of x.photos||[]){const card=document.createElement('div');card.className='useractioncard';const url=await adminSignedPhoto(p.storage_path);card.innerHTML='<b>📷 '+escapeHtml(p.station_name||('Станция #'+p.station_id))+'</b><div class="useractionstatus">'+escapeHtml(adminStatusLabel(p.moderation_status))+'</div>'+(url?'<img class="adminuserthumb" src="'+escapeHtml(url)+'" alt="Фото пользователя">':'<div class="userdetailmuted">Фото недоступно</div>')+'<div class="userdetailmuted">'+dt(p.created_at)+'</div>'+adminDetailMapButton(p.station_lat,p.station_lng,p.station_name||'Станция',p.station_id);photos.appendChild(card);if(url)card.querySelector('img').onclick=()=>{lightboxImg.src=url;lightbox.classList.add('open')}}
+ const photos=document.getElementById('adminUserPhotos');for(const p of x.photos||[]){const card=document.createElement('div');card.className='useractioncard';const url=await adminSignedPhoto(p.storage_path);card.innerHTML='<b>📷 '+escapeHtml(stationDisplayName(p.station_name||'Станция',p.station_id))+'</b><div class="useractionstatus">'+escapeHtml(adminStatusLabel(p.moderation_status))+'</div>'+(url?'<img class="adminuserthumb" src="'+escapeHtml(url)+'" alt="Фото пользователя">':'<div class="userdetailmuted">Фото недоступно</div>')+'<div class="userdetailmuted">'+dt(p.created_at)+'</div>'+adminDetailMapButton(p.station_lat,p.station_lng,stationDisplayName(p.station_name||'Станция',p.station_id),p.station_id);photos.appendChild(card);if(url)card.querySelector('img').onclick=()=>{lightboxImg.src=url;lightbox.classList.add('open')}}
  const stations=document.getElementById('adminUserStations');for(const s of x.stations||[]){const card=document.createElement('div');card.className='useractioncard';const eq=[s.has_tools?'🛠 Инструменты':'',s.has_rack?'🚲 Стойка':'',s.has_pump?'Насос':''].filter(Boolean),url=await adminSignedPhoto(s.photo_path);card.innerHTML='<b>📍 Новая Repair Station</b><div class="useractionstatus">'+escapeHtml(adminStatusLabel(s.moderation_status))+'</div><div class="useractiontext">'+Number(s.lat).toFixed(6)+', '+Number(s.lng).toFixed(6)+(eq.length?'<br>'+escapeHtml(eq.join(' · ')):'')+'</div>'+(url?'<img class="adminuserthumb" src="'+escapeHtml(url)+'" alt="Фото предложенной станции">':'')+'<div class="userdetailmuted">'+dt(s.created_at)+'</div>'+adminDetailMapButton(s.lat,s.lng,'Предложенная Repair Station');stations.appendChild(card);if(url)card.querySelector('img').onclick=()=>{lightboxImg.src=url;lightbox.classList.add('open')}}
  userDetailBody.querySelectorAll('[data-useractivity]').forEach(btn=>btn.onclick=()=>{userDetailBody.querySelectorAll('[data-useractivity]').forEach(b=>b.classList.toggle('active',b===btn));const type=btn.dataset.useractivity;userDetailBody.querySelectorAll('.useractivitysection').forEach(sec=>sec.style.display=type==='all'||sec.dataset.usersection===type?'':'none')});
  userDetailBody.querySelectorAll('.usermapbtn').forEach(b=>b.onclick=()=>{userDetailModal.classList.remove('open');adminModal.classList.remove('open');showMapPoint(b.dataset.lat,b.dataset.lng,b.dataset.title,b.dataset.station||null);notice('📍 Место действия пользователя')});const ban=document.getElementById('detailBan');ban.onclick=async()=>{ban.disabled=true;const next=!u.is_banned;const {error}=await db.rpc('admin_set_device_ban',{p_device_id:u.device_id,p_banned:next});if(error){console.error(error);ban.disabled=false;notice('Не удалось изменить блокировку');return}notice(next?'Пользователь заблокирован':'Пользователь разблокирован');userDetailModal.classList.remove('open');await Promise.all([loadAdminUsers(),loadDevices(),loadAuditLog()])}}
@@ -1694,7 +1705,7 @@ async function loadAuditLog(){
   if(x.storage_path){const {data:u}=await db.storage.from('station-photos').createSignedUrl(x.storage_path,600);if(u?.signedUrl){const img=document.createElement('img');img.src=u.signedUrl;img.alt='Фото из журнала модерации';img.style.cursor='zoom-in';img.onclick=()=>{lightboxImg.src=u.signedUrl;lightbox.classList.add('open')};card.appendChild(img)}}
   const meta=document.createElement('div');meta.className='photometa';
   let html='<b>'+escapeHtml(labels[a.action_type]||a.action_type)+'</b>';
-  if(x.station_name||x.station_id)html+='<br>🔧 '+escapeHtml(x.station_name||'Repair Station')+(x.station_id?' #'+escapeHtml(x.station_id):'');
+  if(x.station_name||x.station_id)html+='<br>🔧 '+escapeHtml(stationDisplayName(x.station_name,x.station_id));
   if(Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lng)))html+='<br>📍 '+Number(x.lat).toFixed(6)+', '+Number(x.lng).toFixed(6);
   if(a.target_type==='station_submission'){const eq=[];if(x.has_tools)eq.push('🛠 Инструменты');if(x.has_rack)eq.push('🚲 Стойка');if(x.has_pump)eq.push('Насос');if(eq.length)html+='<br>'+escapeHtml(eq.join(' · '))}
   html+='<br>Объект: '+escapeHtml(a.target_type)+' #'+escapeHtml(a.target_id||'—');
@@ -1761,15 +1772,16 @@ async function loadPublishedStations(){refreshAdminDashboard();
  if(error){console.error(error);publishedStationQueue.innerHTML='<div class="adminmsg">Не удалось загрузить станции.</div>';return}
  setCount('aPublishedCount',data?.length||0);document.getElementById('aPublishedLabel').textContent='('+(data?.length||0)+')';
  publishedStationQueue.innerHTML='';
- for(const s of data||[]){
+ for(const [stationIndex,s] of (data||[]).entries()){
+  const displayName=stationDisplayName(s.name,s.id,stationIndex+1);
   const card=document.createElement('div');card.className='stationadmincard';
   const eq=[s.has_tools?'🛠 Инструменты':'',s.has_pump?'Насос':''].filter(Boolean).join(' · ');
   const row=document.createElement('div');row.className='stationadminrow';
-  row.innerHTML='<div class="stationadminmeta"><b>'+escapeHtml(s.name||'Repair Station')+' #'+s.id+'</b><div class="stationadminequipment">'+(eq||'Оборудование не указано')+'</div><div class="stationadmincoords">📍 '+Number(s.lat).toFixed(5)+', '+Number(s.lng).toFixed(5)+'</div></div>';
+  row.innerHTML='<div class="stationadminmeta"><b>'+escapeHtml(displayName)+'</b><div class="stationadminequipment">'+(eq||'Оборудование не указано')+'</div><div class="stationadmincoords">📍 '+Number(s.lat).toFixed(5)+', '+Number(s.lng).toFixed(5)+'</div></div>';
   const buttons=document.createElement('div');buttons.className='stationadminbuttons';
-  const view=document.createElement('button');view.className='stationview';view.textContent='◉ Обзор';view.onclick=()=>{adminModal.classList.remove('open');showMapPoint(s.lat,s.lng,(s.name||'Repair Station')+' #'+s.id,s.id)};
+  const view=document.createElement('button');view.className='stationview';view.textContent='◉ Обзор';view.onclick=()=>{adminModal.classList.remove('open');showMapPoint(s.lat,s.lng,displayName,s.id)};
   const move=document.createElement('button');move.className='stationmove';move.textContent='📍 Переместить';move.onclick=()=>startStationMove(s); const edit=document.createElement('button');edit.className='stationmove';edit.textContent='✏️ Изменить';edit.onclick=()=>editPublishedStation(s);
-  const del=document.createElement('button');del.className='stationdelete';del.textContent='🗑 Удалить';del.onclick=async()=>{if(!confirm('Убрать '+(s.name||'Repair Station')+' #'+s.id+' с карты? История сохранится в архиве.'))return;del.disabled=true;const {error:e}=await db.rpc('admin_archive_station',{p_station_id:s.id});if(e){console.error(e);del.disabled=false;notice('Не удалось удалить станцию');return}if(activeStation&&String(activeStation.id)===String(s.id)){panel.classList.remove('open');activeStation=null}notice('Станция убрана с карты');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()])};
+  const del=document.createElement('button');del.className='stationdelete';del.textContent='🗑 Удалить';del.onclick=async()=>{if(!confirm('Убрать '+displayName+' с карты? История сохранится в архиве.'))return;del.disabled=true;const {error:e}=await db.rpc('admin_archive_station',{p_station_id:s.id});if(e){console.error(e);del.disabled=false;notice('Не удалось удалить станцию');return}if(activeStation&&String(activeStation.id)===String(s.id)){panel.classList.remove('open');activeStation=null}notice('Станция убрана с карты');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()])};
   buttons.append(view,edit,move,del);row.appendChild(buttons);card.appendChild(row);publishedStationQueue.appendChild(card);
  }
  if(!publishedStationQueue.children.length)publishedStationQueue.innerHTML='<div class="adminmsg">Опубликованных станций нет.</div>';
@@ -1896,7 +1908,7 @@ function closeStationEditor(){stationEditModal.classList.remove('open');editingS
 function openStationEditor(){
  if(!adminBypass||!activeStation)return;
  editingStation=activeStation;
- document.getElementById('stationEditTitle').textContent=(editingStation.name||'Repair Station')+' #'+editingStation.id;
+ document.getElementById('stationEditTitle').textContent=stationDisplayName(editingStation.name,editingStation.id);
  document.getElementById('stationEditCoords').textContent=Number(editingStation.lat).toFixed(6)+', '+Number(editingStation.lng).toFixed(6);
  const eq=(editingStation.equipment||[]).map(x=>String(x).toLowerCase());
  document.getElementById('stationEditTools').checked=editingStation.has_tools===true||eq.some(x=>x.includes('инструмент'));
@@ -1923,7 +1935,7 @@ document.getElementById('stationEditMove').onclick=()=>{
 };
 document.getElementById('stationEditDelete').onclick=async()=>{
  if(!editingStation)return;const s=editingStation;
- if(!confirm('Удалить '+(s.name||'Repair Station')+' #'+s.id+' навсегда?\n\nБудут удалены станция, сообщения, подтверждения и записи фотографий. Это действие нельзя отменить.'))return;
+ if(!confirm('Удалить '+stationDisplayName(s.name,s.id)+' навсегда?\n\nБудут удалены станция, сообщения, подтверждения и записи фотографий. Это действие нельзя отменить.'))return;
  const b=document.getElementById('stationEditDelete');b.disabled=true;b.textContent='Удаляю…';
  const {error}=await db.rpc('admin_permanently_delete_station',{p_station_id:s.id});
  b.disabled=false;b.textContent='Удалить станцию';
@@ -1934,7 +1946,7 @@ document.getElementById('stationEditDelete').onclick=async()=>{
  notice('Станция #'+s.id+' удалена');await Promise.all([loadStations(),loadPublishedStations(),loadAuditLog()]);
 };
 document.getElementById('confirmWorking').onclick=async()=>{if(!activeStation)return;if(!await guardDevice('report'))return;const btn=document.getElementById('confirmWorking'),stationId=activeStation.id;btn.disabled=true;btn.textContent='Проверяем…';const {error}=await db.rpc('confirm_station_working',{p_device_id:DEVICE_ID,p_device_secret:DEVICE_SECRET,p_station_id:stationId});if(error){console.error(error);btn.disabled=false;btn.textContent='✓ Всё работает';const msg=String(error.message||'');notice(msg.includes('RATE_LIMIT')?'Вы уже недавно подтверждали эту станцию':'Не удалось подтвердить станцию');return}notice('✓ Спасибо — актуальность станции обновлена');await loadStations();const s=stations.find(x=>String(x.id)===String(stationId));if(s)renderStation(s);else{btn.disabled=false;btn.textContent='✓ Всё работает'}};
-function renderSavedStations(){for(const [key,id] of [['favorite_stations','favoriteList'],['recent_stations','recentList']]){const box=document.getElementById(id);if(!box)continue;box.innerHTML='';for(const sid of JSON.parse(localStorage.getItem(key)||'[]')){const s=stations.find(x=>String(x.id)===String(sid));if(!s)continue;const b=document.createElement('button');b.textContent=(s.has_tools?'🔧':'💨')+' #'+s.id;b.onclick=()=>{document.getElementById('myActionsModal').classList.remove('open');renderStation(s)};box.appendChild(b)}if(!box.children.length)box.innerHTML='<span class="adminmsg">Пока пусто</span>'}}
+function renderSavedStations(){for(const [key,id] of [['favorite_stations','favoriteList'],['recent_stations','recentList']]){const box=document.getElementById(id);if(!box)continue;box.innerHTML='';for(const sid of JSON.parse(localStorage.getItem(key)||'[]')){const s=stations.find(x=>String(x.id)===String(sid));if(!s)continue;const b=document.createElement('button');b.textContent=(s.has_tools?'🔧':'💨')+' '+stationDisplayName(s.name,s.id);b.onclick=()=>{document.getElementById('myActionsModal').classList.remove('open');renderStation(s)};box.appendChild(b)}if(!box.children.length)box.innerHTML='<span class="adminmsg">Пока пусто</span>'}}
 document.getElementById('leaderboardOpen').onclick=async()=>{const box=document.getElementById('leaderboardBox');if(box.classList.toggle('open')){box.innerHTML='<div class="adminmsg">Загрузка…</div>';const {data,error}=await db.rpc('get_leaderboard');if(error){box.textContent='Не удалось загрузить рейтинг';return}box.innerHTML='';(data||[]).forEach((u,i)=>{const r=document.createElement('div');r.className='leaderrow';r.innerHTML='<b class="leaderplace">'+(i<3?['🥇','🥈','🥉'][i]:'#'+(i+1))+'</b><span><b>'+escapeHtml(u.display_name)+'</b><small>'+Number(u.contributions||0)+' полезных действий</small></span><b>'+u.reputation+' <small>очков</small></b>';box.appendChild(r)})}};
 
 function circlePolygon(lng,lat,r=650){const pts=[];for(let i=0;i<=48;i++){const a=i/48*Math.PI*2,dy=r*Math.sin(a)/111320,dx=r*Math.cos(a)/(111320*Math.cos(lat*Math.PI/180));pts.push([lng+dx,lat+dy])}return {type:'Feature',geometry:{type:'Polygon',coordinates:[pts]}}}
